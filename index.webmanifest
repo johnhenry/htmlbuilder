@@ -1,0 +1,8 @@
+{
+  "name": "HTML Builder",
+  "short_name": "Builder",
+  "description": "Declarative Application Builder",
+  "icons": [],
+  "display": "standalone",
+  "start_url": "./"
+}
