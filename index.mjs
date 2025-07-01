@@ -688,8 +688,8 @@ const reflowApp = () => {
   outputs.innerHTML = html;
 };
 
-export default async ({ path }) => {
-  window = path[0];
+export default async (event) => {
+  window = event.currentTarget
   confirm = window.confirm;
   document = window.document;
 
