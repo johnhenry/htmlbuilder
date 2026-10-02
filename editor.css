@@ -289,3 +289,49 @@ body {
 .add-package input {
   min-width: 0;
 }
+#new-dialog {
+  inline-size: min(32rem, calc(100vw - 2rem));
+  border: 1px solid var(--domkit-border, #8884);
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+}
+#new-dialog::backdrop {
+  background: #0006;
+}
+#new-form {
+  display: grid;
+  gap: 0.75rem;
+}
+#new-form h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+#new-form > label,
+#new-form fieldset > label:not(.check) {
+  display: grid;
+  gap: 0.2rem;
+}
+#new-form fieldset {
+  display: grid;
+  gap: 0.35rem;
+  border: 1px solid var(--domkit-border, #8884);
+  border-radius: 6px;
+}
+#new-form input:not([type]),
+#new-form textarea {
+  inline-size: 100%;
+}
+#new-form .hint {
+  margin: 0;
+}
+#new-form .actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+#new-packages .check small {
+  display: block;
+  margin-inline-start: 1.6rem;
+  opacity: 0.7;
+  overflow-wrap: anywhere;
+}

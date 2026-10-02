@@ -303,3 +303,45 @@ test("[blank] a library with no manifest: its elements are listed, with the attr
   await greeting.press("Enter");
   await expect.poll(() => previewFrame(page)?.evaluate(() => document.querySelector("greeting-card")?.textContent).catch(() => "")).toBe("Howdy, world!");
 });
+
+test("New: a dialog to choose the title, the starting point, and libraries", async ({ page }) => {
+  await snippet(page, "Game board").click();
+  // Cancel leaves the page alone.
+  await page.getByRole("button", { name: "New" }).click();
+  const dialog = page.getByRole("dialog", { name: "New page" });
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("button", { name: "Cancel" }).click();
+  await expect(dialog).toBeHidden();
+  await expect(row(page, "forsnaken-game")).toBeVisible();
+
+  // Keep this page's libraries and snippets, with nothing on it.
+  await page.getByRole("button", { name: "New" }).click();
+  await dialog.getByLabel("Title").fill("Snake, take two");
+  await dialog.getByLabel(/libraries, snippets, and CSS/).check();
+  await dialog.getByRole("button", { name: "Create" }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page.locator("#tree .row")).toHaveCount(0);
+  await expect(snippet(page, "Game board")).toBeVisible();
+  await expect(page.locator("#title")).toHaveValue("Snake, take two");
+  expect(await markup(page)).toContain(`<base href="${FORSNAKEN}">`);
+
+  // An empty page with domkit (offered), and forsnaken (typed): remembered next time.
+  await page.getByRole("button", { name: "New" }).click();
+  await dialog.getByLabel(/^domkit/).check();
+  await dialog.getByLabel(/Other packages/).fill(FORSNAKEN_PACKAGE);
+  await dialog.getByRole("button", { name: "Create" }).click();
+  await expect(dialog).toBeHidden({ timeout: 15000 });
+  await expect(page.locator("#palette h3", { hasText: /^domkit$/ })).toBeVisible();
+  await expect(page.locator("#palette h3", { hasText: /^forsnaken$/ })).toBeVisible();
+  await expect(snippet(page, "Game board")).toHaveCount(0);
+  await expect(page.locator("#title")).toHaveValue("Untitled");
+  await page.getByRole("button", { name: "New" }).click();
+  await expect(dialog.getByLabel(/^forsnaken/)).not.toBeChecked();
+  // A page at a URL keeps its own title.
+  await dialog.getByLabel("Page URL").fill(FORSNAKEN);
+  await expect(dialog.getByLabel("A page at a URL")).toBeChecked();
+  await dialog.getByRole("button", { name: "Create" }).click();
+  await expect(dialog).toBeHidden({ timeout: 15000 });
+  await expect(page.locator("#title")).toHaveValue("Forsnaken (build your own)");
+  await expect(row(page, "forsnaken-game")).toBeVisible();
+});
