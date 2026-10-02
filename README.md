@@ -14,9 +14,14 @@ serve the folder and open it.
 - **Palette** (left): snippets saved in the project, every custom element
   its libraries describe, and common HTML. Drag an entry onto the page
   outline, or click it to add it inside the selected element.
-- **Page** (outline): drop on a row's top edge to go before it, its bottom
-  edge to go after it, or its middle to go inside it. Drag rows to move
-  them. <kbd>Delete</kbd> removes the selection, <kbd>⌘D</kbd>/<kbd>Ctrl+D</kbd>
+- **Page** (outline): the page as HTML, one tag per line: start tags with
+  their attributes, children indented, then the end tag (an element without
+  children is one line; `<img>` and other void elements have no end tag).
+  Drops land where the line between rows suggests: the upper half of a
+  start tag goes before the element and the lower half inside it, first;
+  the upper half of an end tag goes inside, last, and the lower half after
+  it. On a one-line element, the top edge is before, the middle inside,
+  and the bottom edge after. Drag a tag (either one) to move its element. <kbd>Delete</kbd> removes the selection, <kbd>⌘D</kbd>/<kbd>Ctrl+D</kbd>
   duplicates it, <kbd>⌘Z</kbd>/<kbd>Ctrl+Z</kbd> undoes.
 - **Preview** (middle): the page, running, in a sandboxed frame.
   <kbd>Alt</kbd>/<kbd>Option</kbd>-click an element in it to select it.
@@ -63,7 +68,7 @@ open it again (Open…, or drop it on the editor) to keep editing.
 | File | What it does |
 |---|---|
 | [`src/project.mjs`](src/project.mjs) | The project: parsing and writing the page, paths to elements, edits with undo |
-| [`src/outline.mjs`](src/outline.mjs) | The page outline, and dropping before/after/inside |
+| [`src/outline.mjs`](src/outline.mjs) | The page outline as HTML, and where drops land |
 | [`src/palette.mjs`](src/palette.mjs) | The palette, from snippets, manifests, and [`html-basics.mjs`](src/html-basics.mjs) |
 | [`src/manifests.mjs`](src/manifests.mjs) | Reading `custom-elements.json`, and choosing a control for each attribute type |
 | [`src/inspector.mjs`](src/inspector.mjs) | The Element panel |
