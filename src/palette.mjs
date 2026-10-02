@@ -1,17 +1,19 @@
 // The palette: snippets saved in the project, the custom elements its
-// libraries' manifests describe, and plain HTML. Drag an entry into the
+// libraries' manifests describe, elements the page defined that no
+// manifest describes, and plain HTML. Drag an entry into the
 // outline, or click it to add it inside the selected element.
-import { describeAll } from "./manifests.mjs";
 import BASICS from "./html-basics.mjs";
 
 export const NEW_TYPE = "application/x-htmlbuilder-new";
+const shown = new WeakMap(); // container -> what it shows
 
 /**
  * @param {HTMLElement} container
- * @param {{ project: import("./project.mjs").Project, onAdd: (html: string) => void, filter?: string }} options
+ * @param {{ project: import("./project.mjs").Project, catalog: Map<string, import("./manifests.mjs").ElementInfo>, defined?: Map<string, string[]>, onAdd: (html: string) => void, filter?: string }} options
  */
-export async function renderPalette(container, { project, onAdd, filter = "" }) {
-  const elements = await describeAll(project.libraries);
+export function renderPalette(container, { project, catalog: elements, defined = new Map(), onAdd, filter = "" }) {
+  const components = new Set(project.definitions.map((d) => d.tag));
+  const undescribed = [...defined.keys()].filter((tag) => !elements.has(tag) && !components.has(tag)).sort();
   const needle = filter.trim().toLowerCase();
   const matches = (text) => !needle || text.toLowerCase().includes(needle);
   const groups = [
@@ -23,8 +25,14 @@ export async function renderPalette(container, { project, onAdd, filter = "" }) 
         return byLibrary;
       }, {}),
     ),
+    ["Defined in the page", undescribed.map((tag) => ({ label: `<${tag}>`, html: `<${tag}></${tag}>`, title: "Defined by a library with no manifest" }))],
     ["HTML", BASICS.map(([tag, html]) => ({ label: `<${tag}>`, html, title: html }))],
   ];
+  // Unchanged entries are left alone (rebuilding them would cancel a drag
+  // that started from one).
+  const signature = JSON.stringify(groups.map(([name, items]) => [name, items.filter((i) => matches(i.label) || matches(i.title ?? ""))]));
+  if (shown.get(container) === signature) return;
+  shown.set(container, signature);
   const fragment = document.createDocumentFragment();
   for (const [name, items] of groups) {
     const shown = items.filter((item) => matches(item.label) || matches(item.title ?? ""));

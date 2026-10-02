@@ -3,6 +3,8 @@
 // all use the same file, so what you build is what you get.
 //
 //   <head>
+//     <base href="https://…/">    <- optional: where relative URLs point (added
+//                                    when a project with relative URLs is opened from a URL)
 //     <meta name="htmlbuilder-manifest" content="domkit https://…/custom-elements.json">
 //     <script type="module" src="https://…/frame-timer/global.mjs" data-library="domkit"></script>
 //     <script type="module" data-define="my-widget" data-src="…/widget.mjs" data-export="default">…</script>
@@ -18,8 +20,26 @@
 // preview runs it (preview.mjs).
 
 const PREVIEW_STYLE = "[data-htmlbuilder-selected] { outline: 2px dashed #e040a0 !important; outline-offset: 2px; }";
-// In the preview only: Alt-click (Option-click) selects that element in the editor.
-const PREVIEW_SCRIPT = `addEventListener("click", (event) => {
+// In the preview only: Alt-click (Option-click) selects that element in
+// the editor, and every custom element defined is reported with the
+// attributes it watches (observedAttributes), so the editor knows about
+// elements no manifest describes. It runs before any module script.
+const PREVIEW_SCRIPT = `{
+  const defined = {};
+  let timer = 0;
+  const define = customElements.define;
+  customElements.define = function (name, constructor, options) {
+    define.call(this, name, constructor, options);
+    let attributes = [];
+    try {
+      attributes = [...(constructor.observedAttributes ?? [])].map(String);
+    } catch {}
+    defined[name] = attributes;
+    clearTimeout(timer);
+    timer = setTimeout(() => parent.postMessage({ htmlbuilder: "defined", elements: defined }, "*"));
+  };
+}
+addEventListener("click", (event) => {
   if (!event.altKey) return;
   event.preventDefault();
   event.stopPropagation();
@@ -78,6 +98,8 @@ export class Project extends EventTarget {
   definitions = [];
   /** Let the preview load from this page's origin (for local, non-CORS servers). */
   previewSameOrigin = false;
+  /** Where relative URLs point: the page's <base href>, or "". */
+  base = "";
   #undo = [];
   #redo = [];
 
@@ -104,6 +126,7 @@ export class Project extends EventTarget {
   #load(html) {
     const parsed = new DOMParser().parseFromString(html, "text/html");
     this.title = parsed.title || "Untitled";
+    this.base = parsed.head.querySelector("base[href]")?.getAttribute("href") ?? "";
     const libraries = new Map();
     const library = (name) => {
       if (!libraries.has(name)) libraries.set(name, { name, modules: [], manifest: "" });
@@ -142,6 +165,8 @@ export class Project extends EventTarget {
     }
     const head = [
       '<meta charset="utf-8">',
+      ...(this.base ? [`<base href="${escapeAttribute(this.base)}">`] : []),
+      ...(preview ? [`<script>${PREVIEW_SCRIPT}</script>`] : []),
       '<meta name="viewport" content="width=device-width, initial-scale=1">',
       `<title>${this.title.replace(/</g, "&lt;")}</title>`,
       ...this.libraries.filter((l) => l.manifest).map((l) => `<meta name="htmlbuilder-manifest" content="${escapeAttribute(`${l.name} ${l.manifest}`)}">`),
@@ -150,7 +175,7 @@ export class Project extends EventTarget {
       ...this.definitions.filter((d) => d.tag && d.src).map(defineScript),
       ...this.snippets.map((s) => `<template data-snippet="${escapeAttribute(s.name)}">${s.html}</template>`),
       ...(this.css.trim() ? [`<style>\n${this.css.trim()}\n</style>`] : []),
-      ...(preview ? [`<style>${PREVIEW_STYLE}</style>`, `<script>${PREVIEW_SCRIPT}</script>`] : []),
+      ...(preview ? [`<style>${PREVIEW_STYLE}</style>`] : []),
     ];
     const markup = pretty(body, 2);
     return `<!doctype html>\n<html lang="en">\n  <head>\n${head.map((line) => `    ${line}`).join("\n")}\n  </head>\n  <body>\n${markup}${markup ? "\n" : ""}  </body>\n</html>\n`;
@@ -182,6 +207,7 @@ export class Project extends EventTarget {
       libraries: structuredClone(this.libraries),
       definitions: structuredClone(this.definitions),
       previewSameOrigin: this.previewSameOrigin,
+      base: this.base,
     };
   }
 
@@ -192,6 +218,17 @@ export class Project extends EventTarget {
     this.libraries = state.libraries;
     this.definitions = state.definitions;
     this.previewSameOrigin = state.previewSameOrigin;
+    this.base = state.base;
+  }
+
+  /** Whether any URL in the project is relative (so it depends on where the page is). */
+  usesRelativeURLs() {
+    const urls = [
+      ...this.libraries.flatMap((l) => [...l.modules, l.manifest]),
+      ...this.definitions.map((d) => d.src),
+      ...[...this.body.querySelectorAll("[src], [href]")].map((el) => el.getAttribute("src") ?? el.getAttribute("href")),
+    ];
+    return urls.some((url) => url && !/^([a-z][a-z0-9+.-]*:|\/\/|#)/i.test(url));
   }
 
   /**

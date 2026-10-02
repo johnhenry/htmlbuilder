@@ -16,9 +16,25 @@ const append = async (page, source, text) =>
 const markup = (page) => page.evaluate(() => window.htmlbuilder.project.serialize());
 const previewFrame = (page) => page.frame({ url: /about:srcdoc/ }) ?? page.frames()[1];
 
-test.beforeEach(async ({ page }) => {
-  await page.goto("/?project=./projects/forsnaken.html");
-  await page.evaluate(() => window.htmlbuilder.ready);
+// forsnaken's own page for builders (johnhenry/forsnaken), pinned: an
+// outside project, opened the way anyone's would be.
+const FORSNAKEN = "https://cdn.jsdelivr.net/gh/johnhenry/forsnaken@b414864d6c6d9685c143f978a263681acf908ae2/builder.html";
+const DOMKIT_PACKAGE = "https://cdn.jsdelivr.net/gh/johnhenry/domkit@8356a92f6b1c15205fcc1ca6d6d80ceffddd6386/";
+const FORSNAKEN_PACKAGE = "https://cdn.jsdelivr.net/gh/johnhenry/forsnaken@b414864d6c6d9685c143f978a263681acf908ae2/";
+
+// Most tests start from forsnaken's libraries and snippets, with an empty page.
+test.beforeEach(async ({ page }, testInfo) => {
+  if (testInfo.title.startsWith("[blank]")) {
+    await page.goto("/?project=./projects/blank.html");
+    await page.evaluate(() => window.htmlbuilder.ready);
+    return;
+  }
+  await page.goto("/");
+  await page.evaluate(async (url) => {
+    await window.htmlbuilder.ready;
+    const text = await fetch(url).then((r) => r.text());
+    await window.htmlbuilder.open(text.replace(/<body>[\s\S]*<\/body>/, "<body></body>"), { from: url });
+  }, FORSNAKEN);
   await expect(snippet(page, "Game board")).toBeVisible();
 });
 
@@ -229,3 +245,61 @@ test("a component from a URL: defined in the page and the export; local servers 
   await expect.poll(() => standalone.evaluate(() => document.querySelector("hello-element")?.textContent)).toBe("Hello, world!");
 });
 
+
+test("a project opened from a URL keeps its relative URLs pointing there, and plays", async ({ page }) => {
+  await page.goto(`/?project=${encodeURIComponent(FORSNAKEN)}`);
+  await page.evaluate(() => window.htmlbuilder.ready);
+  // forsnaken's page loads ./game/global.mjs and ./custom-elements.json: relative to forsnaken, not the editor.
+  const html = await markup(page);
+  expect(html).toContain(`<base href="${FORSNAKEN}">`);
+  expect(html).toContain('<script type="module" src="./game/global.mjs" data-library="forsnaken">');
+  await expect(row(page, "forsnaken-game")).toBeVisible();
+  await expect.poll(() => previewFrame(page)?.evaluate(() => document.getElementById("green")?.snake.head.x ?? 0).catch(() => 0), { timeout: 20000 }).toBeGreaterThan(2);
+  // Its manifest describes forsnaken's elements: typed fields.
+  await row(page, 'id="green"').click();
+  await expect(page.locator("#inspector").getByLabel("direction", { exact: true })).toHaveJSProperty("tagName", "SELECT");
+});
+
+test("[blank] libraries from packages: the palette fills from their manifests, and using an element loads its module", async ({ page }) => {
+  await page.getByRole("tab", { name: "Libraries" }).click();
+  for (const url of [DOMKIT_PACKAGE, FORSNAKEN_PACKAGE]) {
+    await page.getByLabel("Add a library from a package").fill(url);
+    await page.getByRole("button", { name: "Add", exact: true }).click();
+    await expect(page.locator("#package-status")).toHaveText(/^Added /);
+  }
+  await expect(page.locator("#palette h3", { hasText: /^domkit$/ })).toBeVisible();
+  await expect(page.locator("#palette h3", { hasText: /^forsnaken$/ })).toBeVisible();
+  // Nothing loads until it's used.
+  expect(await markup(page)).not.toContain("<script");
+  const add = (tag) => page.locator("#palette button", { hasText: new RegExp(`^<${tag}>$`) }).click();
+  await add("forsnaken-game"); // added inside the selection (none: the page), then selected
+  await add("frame-timer");
+  await row(page, "forsnaken-game").click();
+  await add("forsnaken-snake");
+  await row(page, "forsnaken-game").click();
+  await add("forsnaken-apple");
+  const html = await markup(page);
+  expect(html).toContain(`<script type="module" src="${FORSNAKEN_PACKAGE}game/global.mjs" data-library="forsnaken">`);
+  expect(html).toContain(`<script type="module" src="${DOMKIT_PACKAGE}src/frame-timer/global.mjs" data-library="domkit">`);
+  expect(html.match(/<script type="module"/g)).toHaveLength(2); // once per module, not per element
+  await expect.poll(() => previewFrame(page)?.evaluate(() => document.querySelector("forsnaken-snake")?.snake.head.x ?? 0).catch(() => 0), { timeout: 20000 }).toBeGreaterThan(2);
+});
+
+test("[blank] a library with no manifest: its elements are listed, with the attributes they observe", async ({ page }) => {
+  await page.getByRole("tab", { name: "Libraries" }).click();
+  await page.locator("#same-origin").check(); // this test server sends no CORS headers
+  await page.getByRole("button", { name: "Add library by hand" }).click();
+  const item = page.locator("#library-list li").last();
+  await item.getByLabel("Modules (one URL per line)").fill("/test/fixtures/greeting-card.mjs");
+  await item.getByLabel("Modules (one URL per line)").press("Tab");
+  const entry = page.locator("#palette button", { hasText: "<greeting-card>" });
+  await expect(entry).toBeVisible({ timeout: 10000 });
+  await expect(page.locator("#palette h3", { hasText: "Defined in the page" })).toBeVisible();
+  await entry.click();
+  await row(page, "greeting-card").click();
+  await page.getByRole("tab", { name: "Element" }).click();
+  const greeting = page.locator("#inspector").getByLabel("greeting", { exact: true });
+  await greeting.fill("Howdy");
+  await greeting.press("Enter");
+  await expect.poll(() => previewFrame(page)?.evaluate(() => document.querySelector("greeting-card")?.textContent).catch(() => "")).toBe("Howdy, world!");
+});

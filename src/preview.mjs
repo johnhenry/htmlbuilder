@@ -11,12 +11,15 @@ const SANDBOX = "allow-scripts allow-modals allow-pointer-lock allow-popups";
 /**
  * @param {HTMLIFrameElement} frame
  * @param {(path: number[]) => void} onSelect called on Alt-click in the preview
+ * @param {(elements: Record<string, string[]>) => void} [onDefined] called with
+ *   the custom elements the page defined, and the attributes each observes
  */
-export function connectPreview(frame, onSelect) {
+export function connectPreview(frame, onSelect, onDefined = () => {}) {
   let timer = 0;
   addEventListener("message", (event) => {
-    if (event.source !== frame.contentWindow || event.data?.htmlbuilder !== "select") return;
-    onSelect(event.data.path);
+    if (event.source !== frame.contentWindow) return;
+    if (event.data?.htmlbuilder === "select") onSelect(event.data.path);
+    if (event.data?.htmlbuilder === "defined") onDefined(event.data.elements ?? {});
   });
   return {
     /** @param {string} html */
