@@ -100,10 +100,15 @@ body {
   font: 13px/1.5 ui-monospace, monospace;
   overflow-wrap: anywhere;
 }
-#tree .attribute,
 #tree .name,
 #tree .closing {
   white-space: nowrap;
+}
+/* Each attribute stays on one line when it fits; a longer one wraps too. */
+#tree .attribute {
+  display: inline-block;
+  max-inline-size: 100%;
+  text-indent: 0;
 }
 #tree .text {
   margin-inline: 0.5ch;
@@ -239,4 +244,14 @@ body {
 #definition-list label {
   display: grid;
   font-size: 12px;
+}
+/* The panel tabs wrap rather than push the panel into scrolling sideways
+   (which hid the Element tab in narrow windows). */
+.side [role="tablist"] {
+  display: flex;
+  flex-wrap: wrap;
+}
+.side [role="tab"] {
+  flex: 1 1 auto;
+  padding-inline: 0.5rem;
 }
