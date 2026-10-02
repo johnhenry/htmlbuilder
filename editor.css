@@ -182,15 +182,42 @@ body {
   flex-wrap: wrap;
   margin-block-start: 1rem;
 }
-#library-list {
+#library-list,
+#snippet-list,
+#definition-list {
   padding-inline-start: 1.2rem;
 }
-#library-list li {
+#library-list li,
+#snippet-list li,
+#definition-list li {
   display: grid;
   gap: 0.3rem;
   margin-block-end: 1rem;
 }
-#library-list label {
+#snippet-list textarea {
+  font: 12px/1.4 ui-monospace, monospace;
+}
+.check {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+.rules {
+  list-style: none;
+  padding: 0;
+  font: 12px/1.4 ui-monospace, monospace;
+}
+.rules button {
+  display: block;
+  inline-size: 100%;
+  text-align: start;
+  font: inherit;
+  white-space: pre-wrap;
+  margin-block: 2px;
+}
+#library-list label,
+#snippet-list label,
+#definition-list label {
   display: grid;
   font-size: 12px;
 }

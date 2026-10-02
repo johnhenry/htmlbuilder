@@ -5,7 +5,10 @@
 //   <head>
 //     <meta name="htmlbuilder-manifest" content="domkit https://…/custom-elements.json">
 //     <script type="module" src="https://…/frame-timer/global.mjs" data-library="domkit"></script>
+//     <script type="module" data-define="my-widget" data-src="…/widget.mjs" data-export="default">…</script>
+//                                                       <- a component defined from a module URL
 //     <template data-snippet="Snake">…</template>          <- palette snippets
+//     <meta name="htmlbuilder-preview" content="same-origin"> <- optional; see preview.mjs
 //     <style>…</style>
 //   </head>
 //   <body>…</body>
@@ -26,6 +29,13 @@ const PREVIEW_SCRIPT = `addEventListener("click", (event) => {
 }, true);`;
 const RAW = new Set(["script", "style", "pre", "textarea", "template"]);
 const escapeAttribute = (value) => value.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
+
+// A module script that defines `tag` from a module's export, once. (The
+// 2021 version wrote the tag unquoted, so its exports threw.)
+const defineScript = ({ tag, src, exportName }) =>
+  `<script type="module" data-define="${escapeAttribute(tag)}" data-src="${escapeAttribute(src)}" data-export="${escapeAttribute(exportName)}">` +
+  `import * as module from ${JSON.stringify(src)}; customElements.get(${JSON.stringify(tag)}) || customElements.define(${JSON.stringify(tag)}, module[${JSON.stringify(exportName)}]);` +
+  "</script>";
 
 /**
  * Markup with one element per line, indented, and every element closed.
@@ -63,6 +73,11 @@ export class Project extends EventTarget {
   libraries = [];
   /** @type {{ name: string, html: string }[]} */
   snippets = [];
+  /** Components defined from a module URL: `tag` is registered with `src`'s `exportName` export. */
+  /** @type {{ tag: string, src: string, exportName: string }[]} */
+  definitions = [];
+  /** Let the preview load from this page's origin (for local, non-CORS servers). */
+  previewSameOrigin = false;
   #undo = [];
   #redo = [];
 
@@ -98,6 +113,12 @@ export class Project extends EventTarget {
       const [name, url = ""] = (meta.content ?? "").trim().split(/\s+/);
       if (name) library(name).manifest = url;
     }
+    this.definitions = [...parsed.head.querySelectorAll("script[type=module][data-define]")].map((s) => ({
+      tag: s.dataset.define,
+      src: s.dataset.src ?? "",
+      exportName: s.dataset.export || "default",
+    }));
+    this.previewSameOrigin = parsed.head.querySelector('meta[name="htmlbuilder-preview"]')?.content.trim() === "same-origin";
     for (const script of parsed.head.querySelectorAll("script[type=module][src]")) {
       library(script.dataset.library || script.getAttribute("src")).modules.push(script.getAttribute("src"));
     }
@@ -124,7 +145,9 @@ export class Project extends EventTarget {
       '<meta name="viewport" content="width=device-width, initial-scale=1">',
       `<title>${this.title.replace(/</g, "&lt;")}</title>`,
       ...this.libraries.filter((l) => l.manifest).map((l) => `<meta name="htmlbuilder-manifest" content="${escapeAttribute(`${l.name} ${l.manifest}`)}">`),
+      ...(this.previewSameOrigin ? ['<meta name="htmlbuilder-preview" content="same-origin">'] : []),
       ...this.libraries.flatMap((l) => l.modules.map((src) => `<script type="module" src="${escapeAttribute(src)}" data-library="${escapeAttribute(l.name)}"></script>`)),
+      ...this.definitions.filter((d) => d.tag && d.src).map(defineScript),
       ...this.snippets.map((s) => `<template data-snippet="${escapeAttribute(s.name)}">${s.html}</template>`),
       ...(this.css.trim() ? [`<style>\n${this.css.trim()}\n</style>`] : []),
       ...(preview ? [`<style>${PREVIEW_STYLE}</style>`, `<script>${PREVIEW_SCRIPT}</script>`] : []),
@@ -152,7 +175,14 @@ export class Project extends EventTarget {
   // --- changes, with undo ---------------------------------------------------
 
   #snapshot() {
-    return { html: this.body.innerHTML, css: this.css, snippets: structuredClone(this.snippets), libraries: structuredClone(this.libraries) };
+    return {
+      html: this.body.innerHTML,
+      css: this.css,
+      snippets: structuredClone(this.snippets),
+      libraries: structuredClone(this.libraries),
+      definitions: structuredClone(this.definitions),
+      previewSameOrigin: this.previewSameOrigin,
+    };
   }
 
   #restore(state) {
@@ -160,6 +190,8 @@ export class Project extends EventTarget {
     this.css = state.css;
     this.snippets = state.snippets;
     this.libraries = state.libraries;
+    this.definitions = state.definitions;
+    this.previewSameOrigin = state.previewSameOrigin;
   }
 
   /**

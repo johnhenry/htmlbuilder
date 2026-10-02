@@ -5,11 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>HTML Builder</title>
     <link rel="manifest" href="./index.webmanifest" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/johnhenry/domkit@7652163205b366ad9560beb5787ce33ae2979413/src/theme.css" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/johnhenry/domkit@7652163205b366ad9560beb5787ce33ae2979413/src/tabbed-ui/index.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/johnhenry/domkit@c33787ccf5bf87f089f3f0bd90b6999fc9dc61cf/src/theme.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/johnhenry/domkit@c33787ccf5bf87f089f3f0bd90b6999fc9dc61cf/src/tabbed-ui/index.css" />
     <link rel="stylesheet" href="./editor.css" />
-    <script type="module" src="https://cdn.jsdelivr.net/gh/johnhenry/domkit@7652163205b366ad9560beb5787ce33ae2979413/src/tabbed-ui/global.mjs"></script>
-    <script type="module" src="https://cdn.jsdelivr.net/gh/johnhenry/domkit@7652163205b366ad9560beb5787ce33ae2979413/src/hot-key/global.mjs"></script>
+    <script type="module" src="https://cdn.jsdelivr.net/gh/johnhenry/domkit@c33787ccf5bf87f089f3f0bd90b6999fc9dc61cf/src/tabbed-ui/global.mjs"></script>
+    <script type="module" src="https://cdn.jsdelivr.net/gh/johnhenry/domkit@c33787ccf5bf87f089f3f0bd90b6999fc9dc61cf/src/hot-key/global.mjs"></script>
     <script type="module" src="./src/editor.mjs"></script>
   </head>
   <body>
@@ -41,16 +41,29 @@
 
       <aside class="side">
         <tabbed-ui>
-          <div aria-label="Panels"><button type="button">Element</button><button type="button">CSS</button><button type="button">Libraries</button></div>
+          <div aria-label="Panels"><button type="button">Element</button><button type="button">CSS</button><button type="button">Snippets</button><button type="button">Libraries</button></div>
           <section id="inspector"></section>
           <section>
             <label for="css">CSS for the page</label>
             <textarea id="css" spellcheck="false"></textarea>
+            <h3>Rules for the selected element</h3>
+            <ul id="matching-rules" class="rules"></ul>
+          </section>
+          <section>
+            <p class="hint">Snippets are ready-made markup in the palette. Select an element and use <em>Save as snippet</em> to add one.</p>
+            <ol id="snippet-list"></ol>
           </section>
           <section>
             <p class="hint">Each library's modules load in the page (and the preview); its manifest (a <code>custom-elements.json</code>) fills the palette and the element panel.</p>
             <ol id="library-list"></ol>
             <button type="button" id="add-library">Add library</button>
+            <h3>Components from a URL</h3>
+            <p class="hint">Define a tag from a module's export, for a component without a library.</p>
+            <ol id="definition-list"></ol>
+            <button type="button" id="add-definition">Add component</button>
+            <h3>Preview</h3>
+            <label class="check"><input type="checkbox" id="same-origin" /> Load from this page's origin</label>
+            <p class="hint">Turn this on for libraries on a local server that doesn't send CORS headers. It also lets the page's code reach the editor, so only use it for code you trust.</p>
           </section>
         </tabbed-ui>
       </aside>

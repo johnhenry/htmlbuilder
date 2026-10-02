@@ -4,15 +4,19 @@ import { fieldFor } from "./manifests.mjs";
 
 /**
  * @param {HTMLElement} container
- * @param {{ element: Element | null, info?: import("./manifests.mjs").ElementInfo, onAttribute: (name: string, value: string | null, rename?: string) => void, onText: (text: string) => void, onAction: (action: string) => void }} options
+ * @param {{ element: Element | null, info?: import("./manifests.mjs").ElementInfo, onAttribute: (name: string, value: string | null, rename?: string) => void, onText: (text: string) => void, onTextAround: (before: string, after: string) => void, onAction: (action: string) => void }} options
  */
-export function renderInspector(container, { element, info, onAttribute, onText, onAction }) {
+export function renderInspector(container, { element, info, onAttribute, onText, onTextAround, onAction }) {
   if (!element) {
     container.replaceChildren(Object.assign(document.createElement("p"), { className: "hint", textContent: "Select an element in the outline, or Alt-click it in the preview." }));
     return;
   }
   const form = document.createElement("form");
   form.onsubmit = (event) => event.preventDefault();
+  // Enter commits a field, as leaving it does.
+  form.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" && event.target.matches("input")) event.target.dispatchEvent(new Event("change", { bubbles: true }));
+  });
   const heading = Object.assign(document.createElement("h2"), { textContent: `<${element.localName}>` });
   form.append(heading);
   if (info?.summary) form.append(Object.assign(document.createElement("p"), { className: "summary", textContent: info.summary }));
@@ -74,6 +78,22 @@ export function renderInspector(container, { element, info, onAttribute, onText,
     const text = Object.assign(document.createElement("textarea"), { value: element.textContent, rows: 2, ariaLabel: "Text" });
     text.onchange = () => onText(text.value);
     form.append(Object.assign(document.createElement("h3"), { textContent: "Text" }), text);
+  } else if (element.children.length) {
+    // Text before the first child element and after the last one.
+    const { before, after } = textAround(element);
+    const fields = document.createElement("div");
+    fields.className = "fields";
+    const make = (label, value) => {
+      const input = Object.assign(document.createElement("input"), { value, ariaLabel: label });
+      const id = `field-${Math.random().toString(36).slice(2)}`;
+      input.id = id;
+      fields.append(Object.assign(document.createElement("label"), { htmlFor: id, textContent: label }), input);
+      return input;
+    };
+    const b = make("Before", before);
+    const a = make("After", after);
+    b.onchange = a.onchange = () => onTextAround(b.value, a.value);
+    form.append(Object.assign(document.createElement("h3"), { textContent: "Text around its children" }), fields);
   }
 
   const actions = document.createElement("div");
@@ -85,4 +105,31 @@ export function renderInspector(container, { element, info, onAttribute, onText,
   }
   form.append(actions);
   container.replaceChildren(form);
+}
+
+/**
+ * The text before an element's first child element, and after its last.
+ * @param {Element} element
+ */
+export function textAround(element) {
+  const nodes = [...element.childNodes];
+  const first = nodes.findIndex((n) => n.nodeType === Node.ELEMENT_NODE);
+  const last = nodes.findLastIndex((n) => n.nodeType === Node.ELEMENT_NODE);
+  const text = (list) => list.filter((n) => n.nodeType === Node.TEXT_NODE).map((n) => n.textContent).join("").trim();
+  return { before: text(nodes.slice(0, first)), after: text(nodes.slice(last + 1)) };
+}
+
+/**
+ * Replace the text before the first child element and after the last.
+ * @param {Element} element
+ * @param {string} before
+ * @param {string} after
+ */
+export function setTextAround(element, before, after) {
+  const nodes = [...element.childNodes];
+  const first = nodes.findIndex((n) => n.nodeType === Node.ELEMENT_NODE);
+  const last = nodes.findLastIndex((n) => n.nodeType === Node.ELEMENT_NODE);
+  for (const node of [...nodes.slice(0, first), ...nodes.slice(last + 1)]) if (node.nodeType === Node.TEXT_NODE) node.remove();
+  if (before) element.prepend(before);
+  if (after) element.append(after);
 }

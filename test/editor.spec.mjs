@@ -61,7 +61,7 @@ test("swapping brains in the editor: drop a greedy brain into a snake and it hun
 test("moving an element: drag a row before, after, or into another", async ({ page }) => {
   await dropOn(page, snippet(page, "Game board"), page.locator("#tree"));
   await dropOn(page, snippet(page, "Apples"), row(page, "forsnaken-game"));
-  await dropOn(page, snippet(page, "Clock"), row(page, "forsnaken-game"));
+  await dropOn(page, snippet(page, "Clock (24 fps)"), row(page, "forsnaken-game"));
   await dropOn(page, row(page, "frame-timer"), row(page, "forsnaken-apple"), "before");
   expect(await markup(page)).toMatch(/<frame-timer[^>]*><\/frame-timer>\s*<forsnaken-apple/);
   await dropOn(page, row(page, "frame-timer"), row(page, "forsnaken-game"), "after");
@@ -72,7 +72,7 @@ test("moving an element: drag a row before, after, or into another", async ({ pa
 });
 
 test("the inspector edits attributes, with typed fields from the manifest", async ({ page }) => {
-  await snippet(page, "Clock").click(); // click adds inside the selection (or the page)
+  await snippet(page, "Clock (24 fps)").click(); // click adds inside the selection (or the page)
   await row(page, "frame-timer").click();
   const fps = page.locator("#inspector").getByLabel("fps", { exact: true });
   await expect(fps).toHaveAttribute("type", "number");
@@ -133,3 +133,64 @@ test("the downloaded page runs on its own", async ({ page, context }) => {
   await standalone.goto("/exported.html");
   await expect.poll(() => standalone.evaluate(() => document.querySelector("forsnaken-game")?.snakes?.[0]?.snake.head.x ?? 0), { timeout: 15000 }).toBeGreaterThan(1);
 });
+
+test("text before and after an element's children", async ({ page }) => {
+  await snippet(page, "Game board").click();
+  await snippet(page, "Apples").click();
+  await row(page, "forsnaken-game").click();
+  await page.locator("#inspector").getByLabel("Before", { exact: true }).fill("Start");
+  await page.locator("#inspector").getByLabel("After", { exact: true }).fill("End");
+  await page.locator("#inspector").getByLabel("After", { exact: true }).press("Enter");
+  await expect.poll(() => markup(page)).toMatch(/<forsnaken-game[^>]*>Start<forsnaken-apple[^>]*><\/forsnaken-apple>End<\/forsnaken-game>/);
+});
+
+test("the CSS panel lists the rules matching the selected element", async ({ page }) => {
+  await snippet(page, "Game board").click();
+  await page.getByRole("tab", { name: "CSS" }).click();
+  await page.locator("#css").fill("forsnaken-game { outline: 1px solid red; }\np { color: blue; }");
+  await row(page, "forsnaken-game").click();
+  await page.getByRole("tab", { name: "CSS" }).click();
+  await expect(page.locator("#matching-rules button")).toHaveCount(1, { timeout: 5000 });
+  await expect(page.locator("#matching-rules button")).toContainText("forsnaken-game");
+  await page.locator("#matching-rules button").click();
+  expect(await page.evaluate(() => { const css = document.getElementById("css"); return css.value.slice(css.selectionStart, css.selectionEnd); })).toBe("forsnaken-game { outline: 1px solid red; }");
+});
+
+test("snippets can be renamed, edited, and deleted", async ({ page }) => {
+  await page.getByRole("tab", { name: "Snippets" }).click();
+  const first = page.locator("#snippet-list li").first();
+  await first.getByLabel("Name").fill("Big screen");
+  await first.getByLabel("Name").press("Tab");
+  await expect(snippet(page, "Big screen")).toBeVisible();
+  const count = await page.locator("#snippet-list li").count();
+  await page.locator("#snippet-list li").first().getByRole("button", { name: "Delete snippet" }).click();
+  await expect(page.locator("#snippet-list li")).toHaveCount(count - 1);
+  await expect(snippet(page, "Big screen")).toHaveCount(0);
+});
+
+test("a component from a URL: defined in the page and the export; local servers need same-origin", async ({ page, context }) => {
+  await page.getByRole("tab", { name: "Libraries" }).click();
+  await page.getByRole("button", { name: "Add component" }).click();
+  const item = page.locator("#definition-list li").last();
+  await item.getByLabel("Tag").fill("hello-element");
+  await item.getByLabel("Module URL").fill("http://localhost:4830/test/fixtures/hello-element.mjs");
+  await item.getByLabel("Export").fill("HelloElement");
+  await item.getByLabel("Export").press("Tab");
+  await snippet(page, "<hello-element>").click();
+  const html = await markup(page);
+  expect(html).toContain('customElements.define("hello-element", module["HelloElement"])');
+  const greeting = () => previewFrame(page)?.evaluate(() => document.querySelector("hello-element")?.textContent ?? "").catch(() => "");
+  // This test server sends no CORS headers: the sandboxed preview can't load it...
+  await page.waitForTimeout(1500);
+  expect(await greeting()).toBe("");
+  // ...until the preview may use this page's origin.
+  await page.locator("#same-origin").check();
+  await expect.poll(greeting, { timeout: 10000 }).toBe("Hello, world!");
+  expect(await markup(page)).toContain('<meta name="htmlbuilder-preview" content="same-origin">');
+  // The downloaded page defines it too.
+  const standalone = await context.newPage();
+  await standalone.route("http://localhost:4830/exported.html", (route) => route.fulfill({ contentType: "text/html", body: html }));
+  await standalone.goto("/exported.html");
+  await expect.poll(() => standalone.evaluate(() => document.querySelector("hello-element")?.textContent)).toBe("Hello, world!");
+});
+

@@ -20,12 +20,17 @@ serve the folder and open it.
   duplicates it, <kbd>⌘Z</kbd>/<kbd>Ctrl+Z</kbd> undoes.
 - **Preview** (middle): the page, running, in a sandboxed frame.
   <kbd>Alt</kbd>/<kbd>Option</kbd>-click an element in it to select it.
-- **Element** panel: the selected element's attributes. For a custom
-  element whose library has a manifest, each documented attribute gets the
-  right control (a checkbox for booleans, a number field, a menu for a
-  fixed set of values), with its description as a tooltip.
-- **CSS** and **Libraries** panels: the page's styles, and the libraries
-  it loads.
+- **Element** panel: the selected element's attributes, and its text (or,
+  for an element with children, the text before and after them). For a
+  custom element whose library has a manifest, each documented attribute
+  gets the right control (a checkbox for booleans, a number field, a menu
+  for a fixed set of values), with its description as a tooltip.
+- **CSS** panel: the page's styles, and the rules that match the selected
+  element (click one to find it).
+- **Snippets** panel: rename, edit, or delete the palette's snippets.
+- **Libraries** panel: the libraries the page loads; components defined
+  straight from a module URL (a tag, the URL, and which export); and
+  whether the preview may load from this page's origin.
 
 ## A project is a web page
 
@@ -47,6 +52,9 @@ open it again (Open…, or drop it on the editor) to keep editing.
   that tells the editor what each element is and which attributes it takes.
 - **Snippets** are `<template data-snippet>`s: ready-made markup for the
   palette. Select an element and use *Save as snippet* to add one.
+- **Components from a URL** are module scripts that import the export and
+  call `customElements.define()` (marked `data-define`, so the editor can
+  read them back).
 - The editor saves as you go (in this browser), and `?project=URL` opens
   a project from a URL.
 
@@ -84,7 +92,9 @@ npm test        # Playwright: builds the snake game by drag and drop, and more
 
 - The preview is sandboxed without same-origin access, so a library's
   modules must be served with CORS headers (jsDelivr, unpkg, esm.sh, and
-  GitHub Pages all are).
+  GitHub Pages all are). For a local server that doesn't send them, tick
+  *Load from this page's origin* (Libraries panel); that also lets the
+  page's code reach the editor, so use it only for code you trust.
 - The 2021 version kept a JSON model alongside the page, and rebuilt the
   preview element by element. Its reconciler deleted children that
   components created for themselves (a renderer's `<canvas>`), which is

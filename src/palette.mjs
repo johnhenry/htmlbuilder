@@ -16,6 +16,7 @@ export async function renderPalette(container, { project, onAdd, filter = "" }) 
   const matches = (text) => !needle || text.toLowerCase().includes(needle);
   const groups = [
     ["Snippets", project.snippets.map((s) => ({ label: s.name, html: s.html, title: s.html }))],
+    ["Components", project.definitions.filter((d) => d.tag).map((d) => ({ label: `<${d.tag}>`, html: `<${d.tag}></${d.tag}>`, title: d.src }))],
     ...Object.entries(
       [...elements.values()].reduce((byLibrary, info) => {
         (byLibrary[info.library] ??= []).push({ label: `<${info.tag}>`, html: `<${info.tag}></${info.tag}>`, title: info.summary });
