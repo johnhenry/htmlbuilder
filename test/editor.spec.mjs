@@ -50,6 +50,14 @@ test("builds the snake game by drag and drop, and it runs in the preview", async
   await page.screenshot({ path: "test-results/snake-built-in-editor.png" });
 });
 
+test("swapping brains in the editor: drop a greedy brain into a snake and it hunts apples", async ({ page }) => {
+  await dropOn(page, snippet(page, "Game board"), page.locator("#tree"));
+  for (const name of ["Snake (green)", "Apples", "Clock"]) await dropOn(page, snippet(page, name), row(page, "forsnaken-game"));
+  await dropOn(page, snippet(page, "Brain: greedy"), row(page, "forsnaken-snake"));
+  expect(await markup(page)).toMatch(/<forsnaken-snake[^>]*>\s*<snake-brain-greedy><\/snake-brain-greedy>\s*<\/forsnaken-snake>/);
+  await expect.poll(() => previewFrame(page)?.evaluate(() => document.querySelector("forsnaken-snake")?.snake.length ?? 0).catch(() => 0), { timeout: 20000 }).toBeGreaterThan(2);
+});
+
 test("moving an element: drag a row before, after, or into another", async ({ page }) => {
   await dropOn(page, snippet(page, "Game board"), page.locator("#tree"));
   await dropOn(page, snippet(page, "Apples"), row(page, "forsnaken-game"));
