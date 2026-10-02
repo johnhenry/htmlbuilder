@@ -329,9 +329,14 @@ body {
   justify-content: flex-end;
   gap: 0.5rem;
 }
+#new-packages .check {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: baseline;
+  column-gap: 0.4rem;
+}
 #new-packages .check small {
-  display: block;
-  margin-inline-start: 1.6rem;
+  grid-column: 2;
   opacity: 0.7;
   overflow-wrap: anywhere;
 }

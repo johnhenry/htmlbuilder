@@ -345,3 +345,24 @@ test("New: a dialog to choose the title, the starting point, and libraries", asy
   await expect(page.locator("#title")).toHaveValue("Forsnaken (build your own)");
   await expect(row(page, "forsnaken-game")).toBeVisible();
 });
+
+test("[blank] New offers forsnaken's page and library as starting points", async ({ page }) => {
+  await page.getByRole("button", { name: "New" }).click();
+  const dialog = page.getByRole("dialog", { name: "New page" });
+  await expect(dialog.getByLabel(/^forsnaken/)).toBeVisible();
+  await dialog.getByLabel(/^Forsnaken: the snake game/).check();
+  await dialog.getByRole("button", { name: "Create" }).click();
+  await expect(dialog).toBeHidden({ timeout: 15000 });
+  await expect(page.locator("#title")).toHaveValue("Forsnaken (build your own)");
+  await expect(row(page, "forsnaken-game")).toBeVisible();
+  await expect(snippet(page, "Game board")).toBeVisible();
+  // Opening it again doesn't duplicate the suggestions.
+  await page.getByRole("button", { name: "New" }).click();
+  await expect(dialog.getByLabel(/^Forsnaken: the snake game/)).toHaveCount(1);
+  // Or just its library, on an empty page.
+  await dialog.getByLabel(/^forsnaken/).check();
+  await dialog.getByRole("button", { name: "Create" }).click();
+  await expect(dialog).toBeHidden({ timeout: 15000 });
+  await expect(page.locator("#tree .row")).toHaveCount(0);
+  await expect(page.locator("#palette h3", { hasText: /^forsnaken$/ })).toBeVisible();
+});

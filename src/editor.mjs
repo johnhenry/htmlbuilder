@@ -7,6 +7,7 @@ import { renderOutline } from "./outline.mjs";
 import { renderInspector, setTextAround } from "./inspector.mjs";
 import { connectPreview } from "./preview.mjs";
 import { describeAll, libraryFromPackage } from "./manifests.mjs";
+import * as suggestions from "./suggestions.mjs";
 
 const STORAGE_KEY = "htmlbuilder:project";
 const $ = (id) => document.getElementById(id);
@@ -370,9 +371,9 @@ $("undo").onclick = () => run("undo");
 $("redo").onclick = () => run("redo");
 // --- New page ------------------------------------------------------------------
 
-// Libraries offered in the New dialog: domkit, and packages added before in
-// this browser.
-const SUGGESTED = [{ name: "domkit", spec: "https://cdn.jsdelivr.net/gh/johnhenry/domkit@8356a92f6b1c15205fcc1ca6d6d80ceffddd6386/" }];
+// Libraries offered in the New dialog: the suggestions (suggestions.mjs),
+// and packages added before in this browser.
+const SUGGESTED = suggestions.LIBRARIES;
 const RECENT_KEY = "htmlbuilder:packages";
 const recentPackages = () => {
   try {
@@ -403,6 +404,17 @@ $("new").onclick = () => {
       return label;
     }),
   );
+  // Suggested pages, as starting points beside the others.
+  const url = $("new-form").elements.url.closest("fieldset").querySelector('[value="url"]').closest("label");
+  $("new-form").querySelectorAll("[data-suggested]").forEach((el) => el.remove());
+  url.before(
+    ...suggestions.PAGES.map(({ name, url: href }) => {
+      const label = Object.assign(document.createElement("label"), { className: "check" });
+      label.dataset.suggested = "";
+      label.append(Object.assign(document.createElement("input"), { type: "radio", name: "start", value: `page:${href}` }), name);
+      return label;
+    }),
+  );
   $("new-dialog").showModal();
 };
 // Typing a URL picks "A page at a URL".
@@ -428,9 +440,10 @@ $("new-form").onsubmit = async (event) => {
     // The starting point, as a page.
     let html;
     let from = "";
-    if (form.start.value === "url") {
-      if (!form.url.value.trim()) throw new Error("Enter the page's URL.");
-      from = new URL(form.url.value.trim(), location.href).href;
+    const page = form.start.value.startsWith("page:") ? form.start.value.slice(5) : form.start.value === "url" ? form.url.value.trim() : "";
+    if (form.start.value === "url" && !page) throw new Error("Enter the page's URL.");
+    if (page) {
+      from = new URL(page, location.href).href;
       status.textContent = "Opening the page…";
       const response = await fetch(from);
       if (!response.ok) throw new Error(`${response.status} ${from}`);
@@ -443,7 +456,7 @@ $("new-form").onsubmit = async (event) => {
     const start = Project.parse(html);
     if (form.start.value === "keep") start.body.replaceChildren();
     if (from && !start.base && start.usesRelativeURLs()) start.base = from;
-    start.title = form.title.value.trim() || (form.start.value === "url" ? start.title : "Untitled");
+    start.title = form.title.value.trim() || (page ? start.title : "Untitled");
     for (const library of libraries) start.libraries = [...start.libraries.filter((l) => l.name !== library.name), library];
     $("new-dialog").close();
     await open(start.serialize());
