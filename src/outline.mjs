@@ -3,6 +3,8 @@
 // children indented, and an end tag; an element without children is one
 // line, <tag …></tag>; void elements (<img>, <input>) have no end tag.
 // Text shows where it is: between the tags, or before/after the children.
+// Tags are colored by depth, so a start tag and its end tag match, with a
+// guide line between them; hovering either tag highlights both.
 //
 // Click a tag to select its element. Drag tags (or palette entries) onto
 // the outline, and they land where the line between rows suggests:
@@ -68,6 +70,7 @@ export function renderOutline(tree, { project, selected, onSelect, onDrop }) {
       const li = document.createElement("li");
       li.role = "treeitem";
       li.setAttribute("aria-level", String(depth));
+      li.dataset.color = String((depth - 1) % 6); // a start tag and its end tag share a color
       li.setAttribute("aria-selected", String(el === selected));
       const nodes = [...el.childNodes];
       if (el.children.length && !OPAQUE.has(el.localName)) {

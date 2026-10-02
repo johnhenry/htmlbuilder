@@ -115,16 +115,37 @@ body {
 }
 #tree .name {
   font-weight: 600;
-  color: var(--domkit-accent, #0b6bcb);
+  color: var(--tag);
+}
+/* Tag colors by depth: matching start and end tags share one. */
+#tree li { --tag: #0b6bcb; }
+#tree li[data-color="1"] { --tag: #8250df; }
+#tree li[data-color="2"] { --tag: #bf3989; }
+#tree li[data-color="3"] { --tag: #bc4c00; }
+#tree li[data-color="4"] { --tag: #1a7f37; }
+#tree li[data-color="5"] { --tag: #0e7c86; }
+/* A guide line from the start tag down to the end tag. */
+#tree li > ul[role="group"] {
+  margin-inline-start: 0.6rem;
+  padding-inline-start: 0.4rem;
+  border-inline-start: 1px solid color-mix(in srgb, var(--tag) 35%, transparent);
+}
+/* Hovering either tag highlights both. */
+#tree li:has(> .row:hover) > .row {
+  box-shadow: inset 3px 0 var(--tag);
+}
+#tree li:has(> .row:hover) > ul[role="group"] {
+  border-inline-start-color: var(--tag);
 }
 #tree .attribute-name {
-  color: color-mix(in srgb, CanvasText 75%, #b5009b);
+  color: #57606a;
 }
 #tree .value {
-  color: color-mix(in srgb, CanvasText 70%, #1a7f37);
+  color: #0a3069;
 }
 #tree .text {
   font-family: system-ui, sans-serif;
+  font-style: italic;
   opacity: 0.8;
 }
 #tree .row.end {
