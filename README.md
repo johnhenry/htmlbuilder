@@ -95,11 +95,18 @@ npm test        # Playwright: builds the snake game by drag and drop, and more
 
 ## Notes
 
-- The preview is sandboxed without same-origin access, so a library's
-  modules must be served with CORS headers (jsDelivr, unpkg, esm.sh, and
-  GitHub Pages all are). For a local server that doesn't send them, tick
-  *Load from this page's origin* (Libraries panel); that also lets the
-  page's code reach the editor, so use it only for code you trust.
+- The preview is sandboxed without same-origin access, so every module a
+  page imports is a cross-origin request and must be served with CORS
+  headers. jsDelivr, unpkg, esm.sh, and GitHub Pages send them; most quick
+  local servers don't. For components on your own machine, either:
+  - serve them with CORS on (`npx http-server --cors`, `npx serve --cors`),
+    which works with the editor running anywhere, including GitHub Pages; or
+  - run the editor from the same server as your components (`npm run
+    serve` serves this repository; put them beside it) and tick *Load from
+    this page's origin* (Libraries panel). That only helps for modules on
+    the editor's own origin: a server on another port is another origin.
+    It also lets the page's code reach the editor, so use it only for
+    code you trust.
 - The 2021 version kept a JSON model alongside the page, and rebuilt the
   preview element by element. Its reconciler deleted children that
   components created for themselves (a renderer's `<canvas>`), which is
