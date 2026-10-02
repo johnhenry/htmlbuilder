@@ -1,0 +1,22 @@
+// The plain HTML elements the palette offers, with starting markup.
+export default [
+  ["div", "<div></div>"],
+  ["section", "<section></section>"],
+  ["header", "<header></header>"],
+  ["main", "<main></main>"],
+  ["footer", "<footer></footer>"],
+  ["h1", "<h1>Heading</h1>"],
+  ["h2", "<h2>Heading</h2>"],
+  ["p", "<p>Text</p>"],
+  ["a", '<a href="#">Link</a>'],
+  ["button", '<button type="button">Button</button>'],
+  ["img", '<img src="" alt="">'],
+  ["ul", "<ul><li>Item</li></ul>"],
+  ["li", "<li>Item</li>"],
+  ["label", "<label>Label</label>"],
+  ["input", '<input type="text">'],
+  ["form", "<form></form>"],
+  ["dialog", "<dialog></dialog>"],
+  ["canvas", "<canvas></canvas>"],
+  ["span", "<span>Text</span>"],
+];

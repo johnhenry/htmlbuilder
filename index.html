@@ -1,66 +1,76 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>HTML Builder</title>
     <link rel="manifest" href="./index.webmanifest" />
-    <title>HTML Bulider</title>
-    <link rel="stylesheet" href="./index.css" />
-    <script type="module">
-      import load from "./index.mjs";
-      window.onload = load;
-    </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/johnhenry/domkit@c33787ccf5bf87f089f3f0bd90b6999fc9dc61cf/src/theme.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/johnhenry/domkit@c33787ccf5bf87f089f3f0bd90b6999fc9dc61cf/src/tabbed-ui/index.css" />
+    <link rel="stylesheet" href="./editor.css" />
+    <script type="module" src="https://cdn.jsdelivr.net/gh/johnhenry/domkit@c33787ccf5bf87f089f3f0bd90b6999fc9dc61cf/src/tabbed-ui/global.mjs"></script>
+    <script type="module" src="https://cdn.jsdelivr.net/gh/johnhenry/domkit@c33787ccf5bf87f089f3f0bd90b6999fc9dc61cf/src/hot-key/global.mjs"></script>
+    <script type="module" src="./src/editor.mjs"></script>
   </head>
   <body>
-    <div class="sidebar">
-      <div id="exports">
-        <a id="download-full-button" download="full.html" title="download">↧</a>
-        <a id="download-backup-button" download="backup.html" title="backup"
-          >↦</a
-        >
-        <a id="reset-button" href="#" title="reset">×</a>
-        <a id="reflow-button" href="#" title="reflow">↺</a>
-      </div>
-      <div id="update-components" class="hidden">
-        <div class="form">
-          <label>id</label><span id="update-component-id"></span>
-          <label>content</label
-          ><span
-            ><input id="update-component-content-before" />...<input
-              id="update-component-content-after"
-          /></span>
-          <button id="update-attribute-button">+ att</button>
-          <div id="update-component-attributes" class="form"></div>
-          <div></div>
-          <button id="update-component-button">update</button>
-        </div>
-      </div>
-      <div class="components">
-        <div class="form">
-          <label>tag</label><input id="create-component-tag" />
-          <label>definition</label><input id="create-component-definition" />
-          <label>content</label
-          ><span
-            ><input id="create-component-content-before" />...<input
-              id="create-component-content-after"
-          /></span>
-          <button id="create-attribute-button">+ att</button>
-          <div id="create-component-attributes" class="form"></div>
-          <div></div>
-          <button id="create-component-button">create</button>
-        </div>
-        <ul id="component-list"></ul>
-        <button id="toggle-archive">toggle archived</button>
-      </div>
-      <div>
-        <div id="styles"></div>
-        <button id="add-style">+ rule</button>
-        <button id="flush-empty-styles">flush empty</button>
-      </div>
-    </div>
-    <main>
-      <div id="inputs"></div>
-      <div id="outputs"></div>
+    <main id="editor">
+      <header class="toolbar">
+        <h1>HTML Builder</h1>
+        <label class="title">Title <input id="title" /></label>
+        <button type="button" id="new">New</button>
+        <button type="button" id="open">Open…</button>
+        <input type="file" id="open-file" accept=".html,.htm,text/html" hidden />
+        <a id="download" href="#" download="page.html">Download</a>
+        <button type="button" id="undo" disabled title="Undo (⌘Z / Ctrl+Z)">Undo</button>
+        <button type="button" id="redo" disabled title="Redo (⇧⌘Z / Ctrl+Y)">Redo</button>
+      </header>
+
+      <aside class="palette" aria-label="Palette">
+        <input type="search" id="palette-filter" placeholder="Filter" aria-label="Filter the palette" />
+        <div id="palette"></div>
+      </aside>
+
+      <section class="outline" aria-labelledby="outline-heading">
+        <h2 id="outline-heading">Page</h2>
+        <ul id="tree" role="tree" aria-labelledby="outline-heading"></ul>
+      </section>
+
+      <section class="stage" aria-label="Preview">
+        <iframe id="preview" title="Preview" sandbox="allow-scripts allow-modals allow-pointer-lock allow-popups"></iframe>
+      </section>
+
+      <aside class="side">
+        <tabbed-ui>
+          <div aria-label="Panels"><button type="button">Element</button><button type="button">CSS</button><button type="button">Snippets</button><button type="button">Libraries</button></div>
+          <section id="inspector"></section>
+          <section>
+            <label for="css">CSS for the page</label>
+            <textarea id="css" spellcheck="false"></textarea>
+            <h3>Rules for the selected element</h3>
+            <ul id="matching-rules" class="rules"></ul>
+          </section>
+          <section>
+            <p class="hint">Snippets are ready-made markup in the palette. Select an element and use <em>Save as snippet</em> to add one.</p>
+            <ol id="snippet-list"></ol>
+          </section>
+          <section>
+            <p class="hint">Each library's modules load in the page (and the preview); its manifest (a <code>custom-elements.json</code>) fills the palette and the element panel.</p>
+            <ol id="library-list"></ol>
+            <button type="button" id="add-library">Add library</button>
+            <h3>Components from a URL</h3>
+            <p class="hint">Define a tag from a module's export, for a component without a library.</p>
+            <ol id="definition-list"></ol>
+            <button type="button" id="add-definition">Add component</button>
+            <h3>Preview</h3>
+            <label class="check"><input type="checkbox" id="same-origin" /> Load from this page's origin</label>
+            <p class="hint">Turn this on for libraries on a local server that doesn't send CORS headers. It also lets the page's code reach the editor, so only use it for code you trust.</p>
+          </section>
+        </tabbed-ui>
+      </aside>
     </main>
+
+    <!-- Shortcuts (they don't fire while typing in a field). -->
+    <hot-key hotkey="delete backspace" commandfor="editor" command="--delete"></hot-key>
+    <hot-key hotkey="mod+d" commandfor="editor" command="--duplicate"></hot-key>
   </body>
 </html>

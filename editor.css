@@ -1,0 +1,223 @@
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  height: 100%;
+}
+body {
+  font: 14px/1.4 system-ui, sans-serif;
+  color: CanvasText;
+  background: Canvas;
+}
+#editor {
+  display: grid;
+  grid-template: "bar bar bar bar" auto "palette outline stage side" 1fr / 200px minmax(240px, 22%) 1fr 300px;
+  height: 100vh;
+}
+#editor > * {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  border-inline-end: 1px solid var(--domkit-border, #8884);
+}
+.toolbar {
+  grid-area: bar;
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.4rem 0.75rem;
+  border-block-end: 1px solid var(--domkit-border, #8884);
+  overflow: visible;
+}
+.toolbar h1 {
+  font-size: 1rem;
+  margin: 0 1rem 0 0;
+}
+.toolbar .title {
+  margin-inline-end: auto;
+}
+.palette {
+  grid-area: palette;
+  padding: 0.5rem;
+}
+.palette h3 {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0.75rem 0 0.25rem;
+  opacity: 0.7;
+}
+.palette ul,
+#tree,
+#tree ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.palette button {
+  display: block;
+  inline-size: 100%;
+  text-align: start;
+  font: 12px ui-monospace, monospace;
+  padding: 0.25rem 0.4rem;
+  margin-block: 2px;
+  cursor: grab;
+}
+#palette-filter {
+  inline-size: 100%;
+}
+.outline {
+  grid-area: outline;
+  padding: 0.5rem;
+}
+.outline h2 {
+  font-size: 0.85rem;
+  margin: 0 0 0.5rem;
+}
+#tree {
+  min-block-size: 80%;
+}
+#tree.empty::before {
+  content: "Drag elements here from the palette.";
+  display: block;
+  padding: 2rem 0;
+  text-align: center;
+  opacity: 0.6;
+}
+#tree ul {
+  padding-inline-start: 1rem;
+}
+#tree .row {
+  display: flex;
+  gap: 0.4rem;
+  align-items: baseline;
+  padding: 0.15rem 0.3rem;
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+#tree .tag {
+  font-weight: 600;
+}
+#tree .attributes,
+#tree .text {
+  font-size: 12px;
+  opacity: 0.7;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#tree [aria-selected="true"] > .row {
+  background: var(--domkit-highlight, #0b6bcb33);
+}
+#tree .row[data-drop="inside"] {
+  border-color: var(--domkit-accent, teal);
+}
+#tree .row[data-drop="before"] {
+  border-block-start: 2px solid var(--domkit-accent, teal);
+}
+#tree .row[data-drop="after"] {
+  border-block-end: 2px solid var(--domkit-accent, teal);
+}
+.stage {
+  grid-area: stage;
+  background: repeating-conic-gradient(#8881 0 25%, transparent 0 50%) 0 0 / 16px 16px;
+}
+#preview {
+  inline-size: 100%;
+  block-size: 100%;
+  border: 0;
+  display: block;
+  background: white;
+}
+.side {
+  grid-area: side;
+  padding: 0.5rem;
+}
+.side section {
+  padding-block: 0.5rem;
+}
+#css {
+  inline-size: 100%;
+  min-block-size: 60vh;
+  font: 12px/1.5 ui-monospace, monospace;
+}
+.fields,
+.attributes {
+  display: grid;
+  gap: 0.3rem 0.5rem;
+  align-items: center;
+}
+.fields {
+  grid-template-columns: auto 1fr;
+}
+.attributes {
+  grid-template-columns: 1fr 1fr auto;
+}
+.fields input,
+.fields select,
+.attributes input,
+#inspector textarea {
+  min-width: 0;
+  inline-size: 100%;
+}
+#inspector h2 {
+  font: 600 1rem ui-monospace, monospace;
+  margin: 0;
+}
+#inspector h3 {
+  font-size: 0.8rem;
+  margin: 1rem 0 0.4rem;
+}
+.summary,
+.hint {
+  opacity: 0.75;
+  font-size: 12px;
+}
+.actions {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  margin-block-start: 1rem;
+}
+#library-list,
+#snippet-list,
+#definition-list {
+  padding-inline-start: 1.2rem;
+}
+#library-list li,
+#snippet-list li,
+#definition-list li {
+  display: grid;
+  gap: 0.3rem;
+  margin-block-end: 1rem;
+}
+#snippet-list textarea {
+  font: 12px/1.4 ui-monospace, monospace;
+}
+.check {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+.rules {
+  list-style: none;
+  padding: 0;
+  font: 12px/1.4 ui-monospace, monospace;
+}
+.rules button {
+  display: block;
+  inline-size: 100%;
+  text-align: start;
+  font: inherit;
+  white-space: pre-wrap;
+  margin-block: 2px;
+}
+#library-list label,
+#snippet-list label,
+#definition-list label {
+  display: grid;
+  font-size: 12px;
+}

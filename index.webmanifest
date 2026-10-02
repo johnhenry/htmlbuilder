@@ -1,7 +1,7 @@
 {
   "name": "HTML Builder",
   "short_name": "Builder",
-  "description": "Declarative Application Builder",
+  "description": "A drag-and-drop editor for pages built from HTML elements and web components",
   "icons": [],
   "display": "standalone",
   "start_url": "./"

@@ -1,27 +1,16 @@
 {
   "name": "htmlbuilder",
-  "version": "0.1.0",
-  "description": "",
-  "main": "index.js",
-  "directories": {
-    "doc": "docs"
-  },
+  "version": "1.0.0",
+  "private": true,
+  "description": "A drag-and-drop editor for pages built from HTML elements and custom elements. No build step.",
+  "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "lint": "prettier --write . "
+    "serve": "node scripts/serve.mjs",
+    "test": "playwright test"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/johnhenry/forsnaken.git"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/johnhenry/forsnaken/issues"
-  },
-  "homepage": "https://github.com/johnhenry/forsnaken#readme",
   "devDependencies": {
-    "prettier": "^2.0.5"
-  }
+    "@playwright/test": "1.63.0"
+  },
+  "repository": { "type": "git", "url": "git+https://github.com/johnhenry/htmlbuilder.git" },
+  "license": "ISC"
 }
