@@ -18,12 +18,13 @@
 // The markup lives in a document with no browsing context, so custom
 // elements in it are never upgraded or run: it's just a tree to edit. The
 // preview runs it (preview.mjs).
+import { previewRuntime } from "./preview-runtime.mjs";
 
 const PREVIEW_STYLE = "[data-htmlbuilder-selected] { outline: 2px dashed #e040a0 !important; outline-offset: 2px; }";
-// In the preview only: Alt-click (Option-click) selects that element in
-// the editor, and every custom element defined is reported with the
+// In the preview only: every custom element defined is reported with the
 // attributes it watches (observedAttributes), so the editor knows about
-// elements no manifest describes. It runs before any module script.
+// elements no manifest describes. It runs before any module script. (The
+// rest of the preview's side, patching and Alt-click, is preview-runtime.mjs.)
 const PREVIEW_SCRIPT = `{
   const defined = {};
   let timer = 0;
@@ -38,15 +39,8 @@ const PREVIEW_SCRIPT = `{
     clearTimeout(timer);
     timer = setTimeout(() => parent.postMessage({ htmlbuilder: "defined", elements: defined }, "*"));
   };
-}
-addEventListener("click", (event) => {
-  if (!event.altKey) return;
-  event.preventDefault();
-  event.stopPropagation();
-  const path = [];
-  for (let el = event.target; el && el !== document.body; el = el.parentElement) path.unshift([...el.parentElement.children].indexOf(el));
-  parent.postMessage({ htmlbuilder: "select", path }, "*");
-}, true);`;
+}`;
+const ID_ATTRIBUTE = "data-htmlbuilder-id";
 const RAW = new Set(["script", "style", "pre", "textarea", "template"]);
 const escapeAttribute = (value) => value.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
 
@@ -100,6 +94,10 @@ export class Project extends EventTarget {
   previewSameOrigin = false;
   /** Where relative URLs point: the page's <base href>, or "". */
   base = "";
+  // Every element in the page has an id, kept through moves and undo, so
+  // the live preview can be patched element by element (live.mjs).
+  #ids = new WeakMap();
+  #nextId = 1;
   #undo = [];
   #redo = [];
 
@@ -151,13 +149,27 @@ export class Project extends EventTarget {
     this.body.replaceChildren(...[...parsed.body.childNodes].map((n) => this.doc.importNode(n, true)));
   }
 
+  /** An element's id (given one if it has none yet). @param {Element} element */
+  idOf(element) {
+    let id = this.#ids.get(element);
+    if (!id) this.#ids.set(element, (id = this.#nextId++));
+    return id;
+  }
+
+  /** The element with this id, if it's in the page. @param {number} id */
+  nodeById(id) {
+    for (const el of this.body.querySelectorAll("*")) if (this.#ids.get(el) === id) return el;
+    return null;
+  }
+
   /**
    * The project as an HTML document. With `preview`, the selected element
-   * is marked and Alt-click selection is wired up (never saved).
-   * @param {{ preview?: boolean, selected?: Element | null }} [options]
+   * is marked and the preview's side of live editing is added (never saved);
+   * `token` identifies this load to the editor.
+   * @param {{ preview?: boolean, selected?: Element | null, token?: number }} [options]
    * @returns {string}
    */
-  serialize({ preview = false, selected = null } = {}) {
+  serialize({ preview = false, selected = null, token = 0 } = {}) {
     let body = this.body;
     if (preview && selected && this.body.contains(selected)) {
       body = this.body.cloneNode(true);
@@ -166,7 +178,7 @@ export class Project extends EventTarget {
     const head = [
       '<meta charset="utf-8">',
       ...(this.base ? [`<base href="${escapeAttribute(this.base)}">`] : []),
-      ...(preview ? [`<script>${PREVIEW_SCRIPT}</script>`] : []),
+      ...(preview ? [`<script>${PREVIEW_SCRIPT}</script>`, `<script type="module">${previewRuntime(token)}</script>`] : []),
       '<meta name="viewport" content="width=device-width, initial-scale=1">',
       `<title>${this.title.replace(/</g, "&lt;")}</title>`,
       ...this.libraries.filter((l) => l.manifest).map((l) => `<meta name="htmlbuilder-manifest" content="${escapeAttribute(`${l.name} ${l.manifest}`)}">`),
@@ -174,7 +186,7 @@ export class Project extends EventTarget {
       ...this.libraries.flatMap((l) => l.modules.map((src) => `<script type="module" src="${escapeAttribute(src)}" data-library="${escapeAttribute(l.name)}"></script>`)),
       ...this.definitions.filter((d) => d.tag && d.src).map(defineScript),
       ...this.snippets.map((s) => `<template data-snippet="${escapeAttribute(s.name)}">${s.html}</template>`),
-      ...(this.css.trim() ? [`<style>\n${this.css.trim()}\n</style>`] : []),
+      ...(this.css.trim() || preview ? [`<style${preview ? " data-htmlbuilder-css" : ""}>\n${this.css.trim()}\n</style>`] : []),
       ...(preview ? [`<style>${PREVIEW_STYLE}</style>`] : []),
     ];
     const markup = pretty(body, 2);
@@ -199,9 +211,28 @@ export class Project extends EventTarget {
 
   // --- changes, with undo ---------------------------------------------------
 
+  // The body's markup, with each element's id (so undo keeps identities).
+  #bodyHTML() {
+    const clone = this.body.cloneNode(true);
+    const copies = [...clone.querySelectorAll("*")];
+    [...this.body.querySelectorAll("*")].forEach((el, i) => {
+      const id = this.#ids.get(el);
+      if (id) copies[i].setAttribute(ID_ATTRIBUTE, String(id));
+    });
+    return clone.innerHTML;
+  }
+
+  #setBodyHTML(html) {
+    this.body.innerHTML = html;
+    for (const el of this.body.querySelectorAll(`[${ID_ATTRIBUTE}]`)) {
+      this.#ids.set(el, Number(el.getAttribute(ID_ATTRIBUTE)));
+      el.removeAttribute(ID_ATTRIBUTE);
+    }
+  }
+
   #snapshot() {
     return {
-      html: this.body.innerHTML,
+      html: this.#bodyHTML(),
       css: this.css,
       snippets: structuredClone(this.snippets),
       libraries: structuredClone(this.libraries),
@@ -212,7 +243,7 @@ export class Project extends EventTarget {
   }
 
   #restore(state) {
-    this.body.innerHTML = state.html;
+    this.#setBodyHTML(state.html);
     this.css = state.css;
     this.snippets = state.snippets;
     this.libraries = state.libraries;
