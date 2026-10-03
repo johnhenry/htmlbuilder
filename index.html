@@ -54,9 +54,16 @@
             <ol id="snippet-list"></ol>
           </section>
           <section>
-            <p class="hint">Each library's modules load in the page (and the preview); its manifest (a <code>custom-elements.json</code>) fills the palette and the element panel.</p>
+            <p class="hint">Each library's modules load in the page (and the preview); its manifest (a <code>custom-elements.json</code>) fills the palette and the element panel. Without one, elements the page defines are listed under “Defined in the page”, with the attributes they observe.</p>
+            <form id="add-package" class="add-package">
+              <label for="package-url">Add a library from a package</label>
+              <input id="package-url" placeholder="https://cdn.jsdelivr.net/gh/user/repo@commit/ or @scope/name" spellcheck="false" />
+              <button type="submit">Add</button>
+              <p class="hint">Reads its <code>package.json</code> and the <code>custom-elements.json</code> it points to. Elements you use load the modules that register them.</p>
+              <p id="package-status" class="hint" role="status"></p>
+            </form>
             <ol id="library-list"></ol>
-            <button type="button" id="add-library">Add library</button>
+            <button type="button" id="add-library">Add library by hand</button>
             <h3>Components from a URL</h3>
             <p class="hint">Define a tag from a module's export, for a component without a library.</p>
             <ol id="definition-list"></ol>

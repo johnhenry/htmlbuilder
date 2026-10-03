@@ -6,7 +6,7 @@ import { renderPalette } from "./palette.mjs";
 import { renderOutline } from "./outline.mjs";
 import { renderInspector, setTextAround } from "./inspector.mjs";
 import { connectPreview } from "./preview.mjs";
-import { describeAll } from "./manifests.mjs";
+import { describeAll, libraryFromPackage } from "./manifests.mjs";
 
 const STORAGE_KEY = "htmlbuilder:project";
 const $ = (id) => document.getElementById(id);
@@ -16,6 +16,8 @@ let selectedPath = null;
 let loaded = false; // nothing is saved until a project has fully loaded
 let paletteFilter = "";
 let inspected = null;
+let catalog = new Map(); // tag -> what the libraries' manifests say about it
+const defined = new Map(); // tag -> observed attributes, as reported by the preview
 
 const selected = () => (selectedPath ? project.nodeAt(selectedPath) : null);
 const select = (element) => {
@@ -23,10 +25,29 @@ const select = (element) => {
   refresh({ palette: false });
 };
 
-const preview = connectPreview($("preview"), (path) => {
-  const element = project.nodeAt(path);
-  if (element) select(element);
-});
+const preview = connectPreview(
+  $("preview"),
+  (path) => {
+    const element = project.nodeAt(path);
+    if (element) select(element);
+  },
+  (elements) => {
+    const fresh = Object.keys(elements).filter((tag) => !defined.has(tag));
+    for (const [tag, attributes] of Object.entries(elements)) defined.set(tag, attributes);
+    // Only what this changes: the palette (elements no manifest describes)
+    // and the panel for the selected element.
+    if (fresh.some((tag) => !catalog.has(tag))) {
+      renderPalette($("palette"), { project, catalog, defined, filter: paletteFilter, onAdd: add });
+      if (fresh.includes(selected()?.localName)) refresh({ palette: false });
+    }
+  },
+);
+
+// What's known about a tag: its manifest entry, or else (for libraries
+// without one) the attributes its class observes, from the preview.
+const describe = (tag) =>
+  catalog.get(tag) ??
+  (defined.has(tag) ? { tag, summary: "", attributes: defined.get(tag).map((name) => ({ name, type: "string", description: "" })) } : undefined);
 
 async function refresh({ palette = true, now = false } = {}) {
   const element = selected();
@@ -36,7 +57,8 @@ async function refresh({ palette = true, now = false } = {}) {
     onSelect: select,
     onDrop: drop,
   });
-  const info = element ? (await describeAll(project.libraries)).get(element.localName) : undefined;
+  catalog = await describeAll(project.libraries, project.base || location.href);
+  const info = element ? describe(element.localName) : undefined;
   // While someone's typing in the panel for the same element, leave it be
   // (its fields already show what they typed); re-render on a new selection.
   const typing = $("inspector").contains(document.activeElement) && document.activeElement.matches("input, textarea, select") && inspected === element;
@@ -59,7 +81,7 @@ async function refresh({ palette = true, now = false } = {}) {
     onTextAround: (before, after) => edit(() => (setTextAround(element, before, after), element)),
     onAction: (action) => run(action),
   });
-  if (palette) await renderPalette($("palette"), { project, filter: paletteFilter, onAdd: add });
+  if (palette) renderPalette($("palette"), { project, catalog, defined, filter: paletteFilter, onAdd: add });
   // Never overwrite CSS that's been typed but not yet committed.
   if (!cssPending && document.activeElement !== $("css") && $("css").value !== project.css) $("css").value = project.css;
   if (document.activeElement !== $("title")) $("title").value = project.title;
@@ -95,14 +117,40 @@ function edit(fn) {
 }
 
 function add(html) {
-  edit(() => project.place(project.fragment(html), selected(), "inside"));
+  edit(() => {
+    const nodes = project.fragment(html);
+    loadDefinitions(nodes);
+    return project.place(nodes, selected(), "inside");
+  });
 }
 
 function drop({ html, path }, target, position) {
   edit(() => {
     const nodes = html ? project.fragment(html) : [project.nodeAt(path)].filter(Boolean);
+    if (html) loadDefinitions(nodes);
     return project.place(nodes, target, position);
   });
+}
+
+// Make sure the page loads the module that registers each custom element
+// in `nodes`, when a library's manifest says which one that is.
+function loadDefinitions(nodes) {
+  const base = project.base || location.href;
+  const resolve = (url) => {
+    try {
+      return new URL(url, base).href;
+    } catch {
+      return url;
+    }
+  };
+  for (const node of nodes) {
+    if (node.nodeType !== Node.ELEMENT_NODE) continue;
+    for (const element of [node, ...node.querySelectorAll("*")]) {
+      const info = catalog.get(element.localName);
+      const library = info?.definition && project.libraries.find((l) => l.name === info.library);
+      if (library && !library.modules.some((m) => resolve(m) === info.definition)) library.modules.push(info.definition);
+    }
+  }
 }
 
 function run(action) {
@@ -272,9 +320,12 @@ function renderMatchingRules(element) {
 
 // --- opening and saving ------------------------------------------------------
 
-async function open(html) {
+async function open(html, { from = "" } = {}) {
   loaded = false;
+  defined.clear();
   project = Project.parse(html);
+  // A page with relative URLs opened from elsewhere keeps pointing there.
+  if (from && !project.base && project.usesRelativeURLs()) project.base = new URL(from, location.href).href;
   selectedPath = null;
   await refresh({ now: true });
   loaded = true;
@@ -284,7 +335,7 @@ async function open(html) {
 async function openURL(url) {
   const response = await fetch(url);
   if (!response.ok) throw new Error(`${response.status} ${url}`);
-  await open(await response.text());
+  await open(await response.text(), { from: url });
 }
 
 async function start() {
@@ -348,7 +399,7 @@ $("css").oninput = () => {
 $("css").onblur = commitCSS;
 $("palette-filter").oninput = () => {
   paletteFilter = $("palette-filter").value;
-  renderPalette($("palette"), { project, filter: paletteFilter, onAdd: add });
+  renderPalette($("palette"), { project, catalog, defined, filter: paletteFilter, onAdd: add });
 };
 $("add-definition").onclick = () => {
   project.change(() => project.definitions.push({ tag: "", src: "", exportName: "default" }));
@@ -357,6 +408,24 @@ $("add-definition").onclick = () => {
 $("same-origin").onchange = () => {
   project.change(() => (project.previewSameOrigin = $("same-origin").checked));
   refresh({ palette: false });
+};
+$("add-package").onsubmit = async (event) => {
+  event.preventDefault();
+  const input = $("package-url");
+  const status = $("package-status");
+  if (!input.value.trim()) return;
+  status.textContent = "Reading package.json…";
+  try {
+    const library = await libraryFromPackage(input.value);
+    project.change(() => {
+      project.libraries = [...project.libraries.filter((l) => l.name !== library.name), library];
+    });
+    status.textContent = `Added ${library.name}.`;
+    input.value = "";
+    await refresh();
+  } catch (error) {
+    status.textContent = error.message;
+  }
 };
 $("add-library").onclick = () => {
   project.change(() => project.libraries.push({ name: `library-${project.libraries.length + 1}`, modules: [], manifest: "" }));

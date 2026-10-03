@@ -276,3 +276,16 @@ body {
   flex: 1 1 auto;
   padding-inline: 0.5rem;
 }
+.add-package {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.25rem 0.4rem;
+  margin-block-end: 1rem;
+}
+.add-package > :not(input, button) {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+.add-package input {
+  min-width: 0;
+}

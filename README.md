@@ -7,12 +7,15 @@ serve the folder and open it.
 ![The snake game from johnhenry/forsnaken, built by dragging its elements together](screenshot.png)
 
 **[Open it](https://johnhenry.github.io/htmlbuilder/)** ·
-**[Open the snake game project](https://johnhenry.github.io/htmlbuilder/?project=./projects/forsnaken.html)**
+**[Open the snake game](https://johnhenry.github.io/htmlbuilder/?project=https://johnhenry.github.io/forsnaken/builder.html)**
+(forsnaken's own page for builders: htmlbuilder knows nothing about forsnaken,
+and forsnaken nothing about htmlbuilder)
 
 ## Using it
 
 - **Palette** (left): snippets saved in the project, every custom element
-  its libraries describe, and common HTML. Drag an entry onto the page
+  its libraries describe, elements the page defines that no manifest
+  describes ("Defined in the page"), and common HTML. Drag an entry onto the page
   outline, or click it to add it inside the selected element.
 - **Page** (outline): the page as HTML, one tag per line: start tags with
   their attributes, children indented, then the end tag (an element without
@@ -33,7 +36,8 @@ serve the folder and open it.
 - **CSS** panel: the page's styles, and the rules that match the selected
   element (click one to find it).
 - **Snippets** panel: rename, edit, or delete the palette's snippets.
-- **Libraries** panel: the libraries the page loads; components defined
+- **Libraries** panel: add a library from a package URL (or an npm name),
+  or by hand; components defined
   straight from a module URL (a tag, the URL, and which export); and
   whether the preview may load from this page's origin.
 
@@ -55,13 +59,58 @@ open it again (Open…, or drop it on the editor) to keep editing.
 - **Libraries** are module `<script>`s (grouped by `data-library`), plus
   an optional [Custom Elements Manifest](https://github.com/webcomponents/custom-elements-manifest)
   that tells the editor what each element is and which attributes it takes.
+  See [Libraries](#libraries) below.
 - **Snippets** are `<template data-snippet>`s: ready-made markup for the
   palette. Select an element and use *Save as snippet* to add one.
 - **Components from a URL** are module scripts that import the export and
   call `customElements.define()` (marked `data-define`, so the editor can
   read them back).
 - The editor saves as you go (in this browser), and `?project=URL` opens
-  a project from a URL.
+  a project from a URL. If it has relative URLs (`./game/global.mjs`), a
+  `<base href>` is added pointing back where it came from, so they keep
+  working in the preview and in the downloaded page.
+- Everything here is plain HTML that browsers ignore or run as usual, so
+  a project is also a page anyone can serve, and any page can be opened.
+
+## Libraries
+
+**Loading.** A library is loaded the way any page loads a web component:
+a `<script type="module" src>` for a module that registers its elements
+(calls `customElements.define()` when it runs). Nothing is imported by
+name, and the editor never sees a class. Each library chooses its own tag
+names; the editor only uses the tags. (Components from a URL are the one
+exception: there you name the tag and the export, and the editor writes
+`import * as module from "…"` and `customElements.define(tag, module[export])`.)
+
+**Describing.** What the palette and the Element panel know comes from the
+library's `custom-elements.json`, the standard
+[Custom Elements Manifest](https://github.com/webcomponents/custom-elements-manifest):
+each element's tag, summary, and attributes with their types (a `boolean`
+gets a checkbox, `"a" | "b"` a menu), and, through
+`custom-element-definition` exports, which module registers each tag.
+
+**Adding.** *Add a library from a package* takes a package's URL (say
+`https://cdn.jsdelivr.net/gh/johnhenry/forsnaken@<commit>/`) or an npm
+name (`@johnhenry/domkit`, from jsDelivr). It reads `package.json`, follows
+its `customElements` field to the manifest (the format's convention), and
+lists the elements. Using one (dropping or clicking it) adds the module
+that registers it to the page, once: the page loads only what it uses. A
+package with no manifest loads its entry point instead.
+
+**Without a manifest.** The preview reports every element the page
+defines, with the attributes its class observes (`observedAttributes`).
+Those elements are listed under "Defined in the page", and the Element
+panel offers a text field for each observed attribute.
+
+**Removing** a library removes its scripts and its palette entries. Its
+elements stay in the page (and its snippets in the project) as unknown
+tags until you remove them or add a library that defines them.
+
+To make a library work well here (and in any tool that reads manifests):
+ship a `custom-elements.json` with `custom-element-definition` exports,
+and point `package.json`'s `customElements` field at it. Both
+[domkit](https://github.com/johnhenry/domkit) and
+[forsnaken](https://github.com/johnhenry/forsnaken) do.
 
 ## How it works
 
@@ -70,9 +119,9 @@ open it again (Open…, or drop it on the editor) to keep editing.
 | [`src/project.mjs`](src/project.mjs) | The project: parsing and writing the page, paths to elements, edits with undo |
 | [`src/outline.mjs`](src/outline.mjs) | The page outline as HTML, and where drops land |
 | [`src/palette.mjs`](src/palette.mjs) | The palette, from snippets, manifests, and [`html-basics.mjs`](src/html-basics.mjs) |
-| [`src/manifests.mjs`](src/manifests.mjs) | Reading `custom-elements.json`, and choosing a control for each attribute type |
+| [`src/manifests.mjs`](src/manifests.mjs) | Reading `custom-elements.json` and `package.json`, and choosing a control for each attribute type |
 | [`src/inspector.mjs`](src/inspector.mjs) | The Element panel |
-| [`src/preview.mjs`](src/preview.mjs) | The sandboxed preview |
+| [`src/preview.mjs`](src/preview.mjs) | The sandboxed preview, which reports the elements the page defines |
 | [`src/editor.mjs`](src/editor.mjs) | Wires them together; opening, saving, shortcuts |
 
 The page being edited lives in a document with no browsing context, so
@@ -91,6 +140,9 @@ jsDelivr.
 npm install
 npm run serve   # http://localhost:4830/
 npm test        # Playwright: builds the snake game by drag and drop, and more
+
+The tests use forsnaken's `builder.html` and packages from jsDelivr, pinned
+by commit: real outside projects, opened the way anyone's would be.
 ```
 
 ## Notes
