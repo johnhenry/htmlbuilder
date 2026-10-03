@@ -137,9 +137,9 @@ and point `package.json`'s `customElements` field at it. Both
 
 The page being edited lives in a document with no browsing context, so
 custom elements in it are just markup: they never run there. The preview
-is rebuilt from the page's HTML after each change, so it's always exactly
-what Download gives you, and a component's own children or attributes
-can't confuse the editor.
+loads from the page's HTML (exactly what Download gives you), and a
+component's own children or attributes never find their way back into
+the page you're editing.
 
 **Live editing.** The preview loads the page once; after that, each edit is
 sent as a patch: the elements whose tag, attributes, or children changed,
