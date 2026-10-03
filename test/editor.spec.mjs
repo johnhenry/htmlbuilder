@@ -18,9 +18,9 @@ const previewFrame = (page) => page.frame({ url: /about:srcdoc/ }) ?? page.frame
 
 // forsnaken's own page for builders (johnhenry/forsnaken), pinned: an
 // outside project, opened the way anyone's would be.
-const FORSNAKEN = "https://cdn.jsdelivr.net/gh/johnhenry/forsnaken@bdce69946ee0c8ecdba5e7b152020a823d5be5e5/builder.html";
+const FORSNAKEN = "https://cdn.jsdelivr.net/gh/johnhenry/forsnaken@1728f2ae1322588eb37a0ac27951096ab8fd4b14/builder.html";
 const DOMKIT_PACKAGE = "https://cdn.jsdelivr.net/gh/johnhenry/domkit@8356a92f6b1c15205fcc1ca6d6d80ceffddd6386/";
-const FORSNAKEN_PACKAGE = "https://cdn.jsdelivr.net/gh/johnhenry/forsnaken@bdce69946ee0c8ecdba5e7b152020a823d5be5e5/";
+const FORSNAKEN_PACKAGE = "https://cdn.jsdelivr.net/gh/johnhenry/forsnaken@1728f2ae1322588eb37a0ac27951096ab8fd4b14/";
 
 // Most tests start from forsnaken's libraries and snippets, with an empty page.
 test.beforeEach(async ({ page }, testInfo) => {
