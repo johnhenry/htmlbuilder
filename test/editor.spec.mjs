@@ -1,13 +1,18 @@
 import { test, expect } from "@playwright/test";
 
-const row = (page, text) => page.locator("#tree .row", { has: page.locator(".tag", { hasText: text }) }).first();
+// An element's start tag (or its one line), and its end tag.
+const row = (page, text) => page.locator("#tree .row:not(.end)", { has: page.locator(".tag", { hasText: text }) }).first();
+const endRow = (page, text) => page.locator("#tree .row.end", { has: page.locator(".tag", { hasText: text }) }).first();
 const snippet = (page, name) => page.locator("#palette button", { hasText: name }).first();
-// Drop into the middle of a row (inside it), or its top/bottom edge (before/after).
+// Drop on a row's top or bottom edge, its middle, or its upper or lower half.
 const dropOn = async (page, source, target, where = "inside") => {
   const box = await target.boundingBox();
-  const y = where === "before" ? 2 : where === "after" ? box.height - 2 : box.height / 2;
+  const y = { before: 2, after: box.height - 2, inside: box.height / 2, upper: box.height / 4, lower: (box.height * 3) / 4 }[where];
   await source.dragTo(target, { targetPosition: { x: Math.min(40, box.width / 2), y } });
 };
+// Drop as the last child: on the upper half of the end tag, or the middle of a one-line element.
+const append = async (page, source, text) =>
+  (await endRow(page, text).count()) ? dropOn(page, source, endRow(page, text), "upper") : dropOn(page, source, row(page, text));
 const markup = (page) => page.evaluate(() => window.htmlbuilder.project.serialize());
 const previewFrame = (page) => page.frame({ url: /about:srcdoc/ }) ?? page.frames()[1];
 
@@ -21,9 +26,9 @@ test("builds the snake game by drag and drop, and it runs in the preview", async
   await dropOn(page, snippet(page, "Screen"), page.locator("#tree"));
   await dropOn(page, snippet(page, "Game board"), row(page, "pixel-canvas"));
   for (const name of ["Snake (green)", "Wall (diagonal)", "Apples", "Clock"]) {
-    await dropOn(page, snippet(page, name), row(page, "forsnaken-game"));
+    await append(page, snippet(page, name), "forsnaken-game");
   }
-  await dropOn(page, snippet(page, "Arrow keys for green"), row(page, "pixel-canvas"), "after");
+  await dropOn(page, snippet(page, "Arrow keys for green"), endRow(page, "pixel-canvas"), "after");
 
   const html = await markup(page);
   // Explicit closing tags, nested as dropped, in the order dropped.
@@ -52,23 +57,53 @@ test("builds the snake game by drag and drop, and it runs in the preview", async
 
 test("swapping brains in the editor: drop a greedy brain into a snake and it hunts apples", async ({ page }) => {
   await dropOn(page, snippet(page, "Game board"), page.locator("#tree"));
-  for (const name of ["Snake (green)", "Apples", "Clock"]) await dropOn(page, snippet(page, name), row(page, "forsnaken-game"));
-  await dropOn(page, snippet(page, "Brain: greedy"), row(page, "forsnaken-snake"));
+  for (const name of ["Snake (green)", "Apples", "Clock"]) await append(page, snippet(page, name), "forsnaken-game");
+  await append(page, snippet(page, "Brain: greedy"), "forsnaken-snake");
   expect(await markup(page)).toMatch(/<forsnaken-snake[^>]*>\s*<snake-brain-greedy><\/snake-brain-greedy>\s*<\/forsnaken-snake>/);
   await expect.poll(() => previewFrame(page)?.evaluate(() => document.querySelector("forsnaken-snake")?.snake.length ?? 0).catch(() => 0), { timeout: 20000 }).toBeGreaterThan(2);
 });
 
 test("moving an element: drag a row before, after, or into another", async ({ page }) => {
   await dropOn(page, snippet(page, "Game board"), page.locator("#tree"));
-  await dropOn(page, snippet(page, "Apples"), row(page, "forsnaken-game"));
-  await dropOn(page, snippet(page, "Clock (24 fps)"), row(page, "forsnaken-game"));
+  await append(page, snippet(page, "Apples"), "forsnaken-game");
+  await append(page, snippet(page, "Clock (24 fps)"), "forsnaken-game");
   await dropOn(page, row(page, "frame-timer"), row(page, "forsnaken-apple"), "before");
   expect(await markup(page)).toMatch(/<frame-timer[^>]*><\/frame-timer>\s*<forsnaken-apple/);
-  await dropOn(page, row(page, "frame-timer"), row(page, "forsnaken-game"), "after");
+  await dropOn(page, row(page, "frame-timer"), endRow(page, "forsnaken-game"), "after");
   expect(await markup(page)).toMatch(/<\/forsnaken-game>\s*<frame-timer/);
   // An element can't go inside itself.
   await dropOn(page, row(page, "forsnaken-game"), row(page, "forsnaken-apple"));
   expect(await markup(page)).toMatch(/<forsnaken-game[^>]*>\s*<forsnaken-apple/);
+});
+
+test("the outline reads as HTML: attributes in the start tag, end tags on their own line", async ({ page }) => {
+  await dropOn(page, snippet(page, "Game board"), page.locator("#tree"));
+  await append(page, snippet(page, "Clock (24 fps)"), "forsnaken-game");
+  const lines = await page.locator("#tree .row").evaluateAll((rows) => rows.map((r) => r.querySelector(".tag")?.textContent ?? ""));
+  expect(lines[0]).toMatch(/^<forsnaken-game( [\w-]+(="[^"]*")?)*>$/);
+  expect(lines[1]).toBe('<frame-timer fps="24">');
+  expect(lines.at(-1)).toBe("</forsnaken-game>");
+  // The one-line element ends with its end tag; a void element has none.
+  expect(await row(page, "frame-timer").locator(".tag").last().textContent()).toBe("</frame-timer>");
+  await dropOn(page, page.locator("#palette button", { hasText: "<img>" }), endRow(page, "forsnaken-game"), "lower");
+  await expect(row(page, "img").locator(".tag")).toHaveCount(1);
+  await expect(row(page, "img").locator(".tag")).toHaveText(/^<img( [\w-]+(="[^"]*")?)*>$/);
+});
+
+test("drops follow the line between rows: start tag halves and end tag halves", async ({ page }) => {
+  await dropOn(page, snippet(page, "Game board"), page.locator("#tree"));
+  await append(page, snippet(page, "Apples"), "forsnaken-game");
+  // Lower half of the start tag: the first child.
+  await dropOn(page, snippet(page, "Clock (24 fps)"), row(page, "forsnaken-game"), "lower");
+  expect(await markup(page)).toMatch(/<forsnaken-game[^>]*>\s*<frame-timer[^>]*><\/frame-timer>\s*<forsnaken-apple/);
+  // Upper half of the end tag: the last child.
+  await dropOn(page, row(page, "frame-timer"), endRow(page, "forsnaken-game"), "upper");
+  expect(await markup(page)).toMatch(/<forsnaken-apple[^>]*>(.|\n)*<\/forsnaken-apple>\s*<frame-timer[^>]*><\/frame-timer>\s*<\/forsnaken-game>/);
+  // Upper half of the start tag: before; lower half of the end tag: after.
+  await dropOn(page, row(page, "frame-timer"), row(page, "forsnaken-game"), "upper");
+  expect(await markup(page)).toMatch(/<frame-timer[^>]*><\/frame-timer>\s*<forsnaken-game/);
+  await dropOn(page, row(page, "frame-timer"), endRow(page, "forsnaken-game"), "lower");
+  expect(await markup(page)).toMatch(/<\/forsnaken-game>\s*<frame-timer/);
 });
 
 test("the inspector edits attributes, with typed fields from the manifest", async ({ page }) => {
@@ -93,10 +128,10 @@ test("the outline is keyboard navigable", async ({ page }) => {
   for (const name of ["Game board", "Clock"]) await snippet(page, name).click();
   await row(page, "forsnaken-game").click();
   await page.keyboard.press("ArrowDown");
-  await expect(page.locator('#tree [aria-selected="true"] > .row')).toContainText("frame-timer");
-  await expect(page.locator('#tree [aria-selected="true"] > .row')).toBeFocused();
+  await expect(page.locator('#tree [aria-selected="true"] > .row:not(.end)')).toContainText("frame-timer");
+  await expect(page.locator('#tree [aria-selected="true"] > .row:not(.end)')).toBeFocused();
   await page.keyboard.press("Home");
-  await expect(page.locator('#tree [aria-selected="true"] > .row')).toContainText("forsnaken-game");
+  await expect(page.locator('#tree [aria-selected="true"] > .row:not(.end)')).toContainText("forsnaken-game");
 });
 
 test("undo and redo; delete and duplicate shortcuts", async ({ page }) => {

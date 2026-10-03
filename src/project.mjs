@@ -247,18 +247,20 @@ export class Project extends EventTarget {
   }
 
   /**
-   * Put nodes before, after, or inside (at the end of) `target` (the body
-   * if null). Returns the first element placed.
+   * Put nodes before or after `target`, or inside it as its first or last
+   * children (`first` / `inside`). A null target is the body. Returns the
+   * first element placed.
    * @param {Node[]} nodes
    * @param {Element | null} target
-   * @param {"before" | "after" | "inside"} position
+   * @param {"before" | "after" | "first" | "inside"} position
    */
   place(nodes, target, position = "inside") {
     target ??= this.body;
-    if (target === this.body) position = "inside";
+    if (target === this.body && (position === "before" || position === "after")) position = "inside";
     if (nodes.some((node) => node === target || node.contains(target))) return null; // not into itself
     if (position === "before") target.before(...nodes);
     else if (position === "after") target.after(...nodes);
+    else if (position === "first") target.prepend(...nodes);
     else target.append(...nodes);
     return nodes.find((node) => node.nodeType === Node.ELEMENT_NODE) ?? null;
   }

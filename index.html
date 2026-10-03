@@ -63,7 +63,7 @@
             <button type="button" id="add-definition">Add component</button>
             <h3>Preview</h3>
             <label class="check"><input type="checkbox" id="same-origin" /> Load from this page's origin</label>
-            <p class="hint">Turn this on for libraries on a local server that doesn't send CORS headers. It also lets the page's code reach the editor, so only use it for code you trust.</p>
+            <p class="hint">The preview loads modules from other origins only if they send CORS headers. Turn this on to load modules served from the editor's own origin without them (when you run the editor on your own server, next to your components). It also lets the page's code reach the editor, so only use it for code you trust.</p>
           </section>
         </tabbed-ui>
       </aside>

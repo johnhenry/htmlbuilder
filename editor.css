@@ -89,36 +89,81 @@ body {
 #tree ul {
   padding-inline-start: 1rem;
 }
+/* Rows read like source code: inline, wrapping between attributes with
+   a hanging indent rather than being cut off. */
 #tree .row {
-  display: flex;
-  gap: 0.4rem;
-  align-items: baseline;
-  padding: 0.15rem 0.3rem;
+  padding: 0.15rem 0.3rem 0.15rem calc(0.3rem + 2ch);
+  text-indent: -2ch;
   border-radius: 4px;
   cursor: pointer;
-  white-space: nowrap;
   border: 1px solid transparent;
+  font: 13px/1.5 ui-monospace, monospace;
+  overflow-wrap: anywhere;
 }
-#tree .tag {
-  font-weight: 600;
+#tree .name,
+#tree .closing {
+  white-space: nowrap;
 }
-#tree .attributes,
+/* Each attribute stays on one line when it fits; a longer one wraps too. */
+#tree .attribute {
+  display: inline-block;
+  max-inline-size: 100%;
+  text-indent: 0;
+}
 #tree .text {
-  font-size: 12px;
-  opacity: 0.7;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  margin-inline: 0.5ch;
+}
+#tree .name {
+  font-weight: 600;
+  color: var(--tag);
+}
+/* Tag colors by depth: matching start and end tags share one. */
+#tree li { --tag: #0b6bcb; }
+#tree li[data-color="1"] { --tag: #8250df; }
+#tree li[data-color="2"] { --tag: #bf3989; }
+#tree li[data-color="3"] { --tag: #bc4c00; }
+#tree li[data-color="4"] { --tag: #1a7f37; }
+#tree li[data-color="5"] { --tag: #0e7c86; }
+/* A guide line from the start tag down to the end tag. */
+#tree li > ul[role="group"] {
+  margin-inline-start: 0.6rem;
+  padding-inline-start: 0.4rem;
+  border-inline-start: 1px solid color-mix(in srgb, var(--tag) 35%, transparent);
+}
+/* Hovering either tag highlights both. */
+#tree li:has(> .row:hover) > .row {
+  box-shadow: inset 3px 0 var(--tag);
+}
+#tree li:has(> .row:hover) > ul[role="group"] {
+  border-inline-start-color: var(--tag);
+}
+#tree .attribute-name {
+  color: #57606a;
+}
+#tree .value {
+  color: #0a3069;
+}
+#tree .text {
+  font-family: system-ui, sans-serif;
+  font-style: italic;
+  opacity: 0.8;
+}
+#tree .row.end {
+  opacity: 0.85;
 }
 #tree [aria-selected="true"] > .row {
   background: var(--domkit-highlight, #0b6bcb33);
 }
-#tree .row[data-drop="inside"] {
+/* Drop marks: a line where the element will land, or a box for "inside". */
+#tree .row[data-drop="inside"]:not(.end) {
   border-color: var(--domkit-accent, teal);
 }
-#tree .row[data-drop="before"] {
+#tree .row[data-drop="before"],
+#tree .row.end[data-drop="inside"] {
   border-block-start: 2px solid var(--domkit-accent, teal);
 }
-#tree .row[data-drop="after"] {
+#tree .row[data-drop="after"],
+#tree .row.start[data-drop="first"] {
   border-block-end: 2px solid var(--domkit-accent, teal);
 }
 .stage {
@@ -220,4 +265,14 @@ body {
 #definition-list label {
   display: grid;
   font-size: 12px;
+}
+/* The panel tabs wrap rather than push the panel into scrolling sideways
+   (which hid the Element tab in narrow windows). */
+.side [role="tablist"] {
+  display: flex;
+  flex-wrap: wrap;
+}
+.side [role="tab"] {
+  flex: 1 1 auto;
+  padding-inline: 0.5rem;
 }
