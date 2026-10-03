@@ -18,9 +18,9 @@ const previewFrame = (page) => page.frame({ url: /about:srcdoc/ }) ?? page.frame
 
 // forsnaken's own page for builders (johnhenry/forsnaken), pinned: an
 // outside project, opened the way anyone's would be.
-const FORSNAKEN = "https://cdn.jsdelivr.net/gh/johnhenry/forsnaken@8f1292c890df58613acb2a6ecd7795a9d5d9fe71/builder.html";
+const FORSNAKEN = "https://cdn.jsdelivr.net/gh/johnhenry/forsnaken@6b410c09cfe6c094e1bb33e530256122928e7de1/builder.html";
 const DOMKIT_PACKAGE = "https://cdn.jsdelivr.net/gh/johnhenry/domkit@e7cfc1ce246fcdb88f194f87ae03bb3e28d2f11e/";
-const FORSNAKEN_PACKAGE = "https://cdn.jsdelivr.net/gh/johnhenry/forsnaken@8f1292c890df58613acb2a6ecd7795a9d5d9fe71/";
+const FORSNAKEN_PACKAGE = "https://cdn.jsdelivr.net/gh/johnhenry/forsnaken@6b410c09cfe6c094e1bb33e530256122928e7de1/";
 
 // Most tests start from forsnaken's libraries and snippets, with an empty page.
 test.beforeEach(async ({ page }, testInfo) => {
@@ -48,7 +48,7 @@ test("builds the snake game by drag and drop, and it runs in the preview", async
 
   const html = await markup(page);
   // Explicit closing tags, nested as dropped, in the order dropped.
-  expect(html).toMatch(/<pixel-canvas[^>]*>\s*<forsnaken-game[^>]*>\s*<forsnaken-snake[^>]*><\/forsnaken-snake>\s*<forsnaken-wall[^>]*><\/forsnaken-wall>\s*<forsnaken-apple[^>]*><\/forsnaken-apple>\s*<frame-timer[^>]*><\/frame-timer>\s*<\/forsnaken-game>\s*<\/pixel-canvas>\s*<hot-key/);
+  expect(html).toMatch(/<pixel-canvas[^>]*>\s*<forsnaken-game[^>]*>\s*<forsnaken-snake[^>]*>\s*<snake-brain-player[^>]*><\/snake-brain-player>\s*<\/forsnaken-snake>\s*<forsnaken-wall[^>]*><\/forsnaken-wall>\s*<forsnaken-apple[^>]*><\/forsnaken-apple>\s*<frame-timer[^>]*><\/frame-timer>\s*<\/forsnaken-game>\s*<\/pixel-canvas>\s*<hot-key/);
 
   // The preview runs it: the board is drawn through <pixel-canvas>, and the clock moves the snake.
   await expect.poll(async () => {
@@ -74,9 +74,11 @@ test("builds the snake game by drag and drop, and it runs in the preview", async
   await page.screenshot({ path: "test-results/snake-built-in-editor.png" });
 });
 
-test("swapping brains in the editor: drop a greedy brain into a snake and it hunts apples", async ({ page }) => {
+test("swapping brains in the editor: replace the player's brain with a greedy one and it hunts apples", async ({ page }) => {
   await dropOn(page, snippet(page, "Game board"), page.locator("#tree"));
   for (const name of ["Snake (green)", "Apples", "Clock"]) await append(page, snippet(page, name), "forsnaken-game");
+  await row(page, "snake-brain-player").click();
+  await page.keyboard.press("Delete");
   await append(page, snippet(page, "Brain: greedy"), "forsnaken-snake");
   expect(await markup(page)).toMatch(/<forsnaken-snake[^>]*>\s*<snake-brain-greedy><\/snake-brain-greedy>\s*<\/forsnaken-snake>/);
   await expect.poll(() => previewFrame(page)?.evaluate(() => document.querySelector("forsnaken-snake")?.snake.length ?? 0).catch(() => 0), { timeout: 20000 }).toBeGreaterThan(2);
@@ -372,7 +374,7 @@ test("[blank] New offers forsnaken's page and library as starting points", async
 
 // --- the live preview: edits are patched into the running page ---------------
 
-const LIVE_FORSNAKEN = "https://cdn.jsdelivr.net/gh/johnhenry/forsnaken@8f1292c890df58613acb2a6ecd7795a9d5d9fe71/builder.html";
+const LIVE_FORSNAKEN = "https://cdn.jsdelivr.net/gh/johnhenry/forsnaken@6b410c09cfe6c094e1bb33e530256122928e7de1/builder.html";
 const openLive = async (page) => {
   await page.goto(`/?project=${encodeURIComponent(LIVE_FORSNAKEN)}`);
   await page.evaluate(() => window.htmlbuilder.ready);
