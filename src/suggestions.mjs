@@ -5,10 +5,10 @@
 /** Packages offered as libraries (a package URL or npm name each). */
 export const LIBRARIES = [
   { name: "domkit", spec: "https://cdn.jsdelivr.net/gh/johnhenry/domkit@8356a92f6b1c15205fcc1ca6d6d80ceffddd6386/" },
-  { name: "forsnaken", spec: "https://cdn.jsdelivr.net/gh/johnhenry/forsnaken@b414864d6c6d9685c143f978a263681acf908ae2/" },
+  { name: "forsnaken", spec: "https://cdn.jsdelivr.net/gh/johnhenry/forsnaken@bdce69946ee0c8ecdba5e7b152020a823d5be5e5/" },
 ];
 
 /** Pages offered as starting points. */
 export const PAGES = [
-  { name: "Forsnaken: the snake game, with its libraries and pieces", url: "https://cdn.jsdelivr.net/gh/johnhenry/forsnaken@b414864d6c6d9685c143f978a263681acf908ae2/builder.html" },
+  { name: "Forsnaken: the snake game, with its libraries and pieces", url: "https://cdn.jsdelivr.net/gh/johnhenry/forsnaken@bdce69946ee0c8ecdba5e7b152020a823d5be5e5/builder.html" },
 ];
