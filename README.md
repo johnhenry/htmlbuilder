@@ -32,7 +32,11 @@ and forsnaken nothing about htmlbuilder)
   it. On a one-line element, the top edge is before, the middle inside,
   and the bottom edge after. Drag a tag (either one) to move its element. <kbd>Delete</kbd> removes the selection, <kbd>⌘D</kbd>/<kbd>Ctrl+D</kbd>
   duplicates it, <kbd>⌘Z</kbd>/<kbd>Ctrl+Z</kbd> undoes.
-- **Preview** (middle): the page, running, in a sandboxed frame.
+- **Preview** (middle): the page, running, in a sandboxed frame. Edits are
+  patched into it as you make them, so what's running keeps running: swap
+  a snake's brain mid-game and the same snake carries on. Changing
+  libraries or components reloads it, and **Restart preview** starts it
+  afresh.
   <kbd>Alt</kbd>/<kbd>Option</kbd>-click an element in it to select it.
 - **Element** panel: the selected element's attributes, and its text (or,
   for an element with children, the text before and after them). For a
@@ -128,13 +132,27 @@ and point `package.json`'s `customElements` field at it. Both
 | [`src/manifests.mjs`](src/manifests.mjs) | Reading `custom-elements.json` and `package.json`, and choosing a control for each attribute type |
 | [`src/inspector.mjs`](src/inspector.mjs) | The Element panel |
 | [`src/preview.mjs`](src/preview.mjs) | The sandboxed preview, which reports the elements the page defines |
+| [`src/live.mjs`](src/live.mjs) / [`src/preview-runtime.mjs`](src/preview-runtime.mjs) | Live editing: the patch from what the preview has to the page now, and the preview's side that applies it |
 | [`src/editor.mjs`](src/editor.mjs) | Wires them together; opening, saving, shortcuts |
 
 The page being edited lives in a document with no browsing context, so
 custom elements in it are just markup: they never run there. The preview
-is rebuilt from the page's HTML after each change, so it's always exactly
-what Download gives you, and a component's own children or attributes
-can't confuse the editor.
+loads from the page's HTML (exactly what Download gives you), and a
+component's own children or attributes never find their way back into
+the page you're editing.
+
+**Live editing.** The preview loads the page once; after that, each edit is
+sent as a patch: the elements whose tag, attributes, or children changed,
+by id (ids survive moves and undo). The preview records the page as
+written before any library runs, and a patch only ever touches that:
+children a component made for itself, and attributes it set on itself,
+are left alone. Moved elements are moved, not recreated, so they keep
+their state. This relies on elements that take attribute changes and
+moves in their stride, which is what domkit's principles require and what
+forsnaken's elements do. A change no patch can make (libraries,
+components, the base URL, or a `<script>` added, changed, or removed)
+reloads the preview, since the browser can't redefine an element or un-run
+a script.
 
 The editor's own interface uses [domkit](https://github.com/johnhenry/domkit)
 (`<tabbed-ui>` for the panels, `<hot-key>` for shortcuts), loaded from

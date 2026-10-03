@@ -18,9 +18,9 @@ const previewFrame = (page) => page.frame({ url: /about:srcdoc/ }) ?? page.frame
 
 // forsnaken's own page for builders (johnhenry/forsnaken), pinned: an
 // outside project, opened the way anyone's would be.
-const FORSNAKEN = "https://cdn.jsdelivr.net/gh/johnhenry/forsnaken@1728f2ae1322588eb37a0ac27951096ab8fd4b14/builder.html";
-const DOMKIT_PACKAGE = "https://cdn.jsdelivr.net/gh/johnhenry/domkit@8356a92f6b1c15205fcc1ca6d6d80ceffddd6386/";
-const FORSNAKEN_PACKAGE = "https://cdn.jsdelivr.net/gh/johnhenry/forsnaken@1728f2ae1322588eb37a0ac27951096ab8fd4b14/";
+const FORSNAKEN = "https://cdn.jsdelivr.net/gh/johnhenry/forsnaken@8f1292c890df58613acb2a6ecd7795a9d5d9fe71/builder.html";
+const DOMKIT_PACKAGE = "https://cdn.jsdelivr.net/gh/johnhenry/domkit@e7cfc1ce246fcdb88f194f87ae03bb3e28d2f11e/";
+const FORSNAKEN_PACKAGE = "https://cdn.jsdelivr.net/gh/johnhenry/forsnaken@8f1292c890df58613acb2a6ecd7795a9d5d9fe71/";
 
 // Most tests start from forsnaken's libraries and snippets, with an empty page.
 test.beforeEach(async ({ page }, testInfo) => {
@@ -368,4 +368,102 @@ test("[blank] New offers forsnaken's page and library as starting points", async
   await expect(dialog).toBeHidden({ timeout: 15000 });
   await expect(page.locator("#tree .row")).toHaveCount(0);
   await expect(page.locator("#palette h3", { hasText: /^forsnaken$/ })).toBeVisible();
+});
+
+// --- the live preview: edits are patched into the running page ---------------
+
+const LIVE_FORSNAKEN = "https://cdn.jsdelivr.net/gh/johnhenry/forsnaken@8f1292c890df58613acb2a6ecd7795a9d5d9fe71/builder.html";
+const openLive = async (page) => {
+  await page.goto(`/?project=${encodeURIComponent(LIVE_FORSNAKEN)}`);
+  await page.evaluate(() => window.htmlbuilder.ready);
+  await expect.poll(() => game(page, () => document.getElementById("white")?.snake.length ?? 0), { timeout: 20000 }).toBeGreaterThan(3);
+};
+// Run `fn` in the preview; null if it isn't there (yet).
+const game = (page, fn) => previewFrame(page)?.evaluate(fn).catch(() => null) ?? null;
+const loadedAt = (page) => game(page, () => performance.timeOrigin);
+
+test("swapping a brain mid-game: the game keeps running, the same snake under a new brain", async ({ page }) => {
+  await openLive(page);
+  const started = await loadedAt(page);
+  const before = await game(page, () => document.getElementById("white").snake.length);
+  // Delete white's greedy brain, then add a random one inside white.
+  await row(page, "snake-brain-greedy").click();
+  await page.keyboard.press("Delete");
+  await row(page, 'id="white"').click();
+  await snippet(page, "Brain: random").click();
+  await expect.poll(() => game(page, () => document.querySelector("#white > snake-brain-random") !== null && !document.querySelector("snake-brain-greedy"))).toBe(true);
+  expect(await loadedAt(page), "no reload").toBe(started);
+  expect(await game(page, () => document.getElementById("white").snake.length)).toBeGreaterThanOrEqual(before);
+  // Undo brings the greedy brain back, still without a reload.
+  await page.getByRole("button", { name: "Undo" }).click();
+  await page.getByRole("button", { name: "Undo" }).click();
+  await expect.poll(() => game(page, () => document.querySelector("#white > snake-brain-greedy") !== null && !document.querySelector("snake-brain-random"))).toBe(true);
+  expect(await loadedAt(page)).toBe(started);
+});
+
+test("attribute edits, moves, text, and CSS patch the running page; what components did to themselves stays", async ({ page }) => {
+  await openLive(page);
+  const started = await loadedAt(page);
+  const head = await game(page, () => document.getElementById("white").snake.length);
+  // An attribute, from the Element panel.
+  await row(page, 'id="white"').click();
+  const color = page.locator("#inspector").getByLabel("color", { exact: true });
+  await color.fill("#ff00ff");
+  await color.press("Enter");
+  await expect.poll(() => game(page, () => document.getElementById("white").snake.color)).toBe("#ff00ff");
+  expect(await game(page, () => document.getElementById("white").snake.length), "the snake carried on").toBeGreaterThanOrEqual(head);
+  // A move: the clock goes after the apples, and keeps ticking.
+  await dropOn(page, row(page, "frame-timer"), row(page, "forsnaken-apple"), "after");
+  await expect.poll(() => game(page, () => document.querySelector("forsnaken-apple + forsnaken-snake, forsnaken-apple + frame-timer")?.localName)).toBe("frame-timer");
+  // CSS.
+  await page.getByRole("tab", { name: "CSS" }).click();
+  await page.locator("#css").fill("body { background: rgb(1, 2, 3); }");
+  await page.locator("#css").blur();
+  await expect.poll(() => game(page, () => getComputedStyle(document.body).backgroundColor)).toBe("rgb(1, 2, 3)");
+  // The game set role and aria-label on itself; patches leave them.
+  expect(await game(page, () => document.querySelector("forsnaken-game").getAttribute("role"))).toBe("img");
+  expect(await loadedAt(page), "no reload").toBe(started);
+  const still = await game(page, () => document.getElementById("white").snake.length);
+  await page.waitForTimeout(500);
+  expect(await game(page, () => document.getElementById("green").snake.head.x)).not.toBe(10); // still moving
+  expect(still).toBeGreaterThan(0);
+});
+
+test("libraries reload the preview, and so does Restart", async ({ page }) => {
+  await openLive(page);
+  let started = await loadedAt(page);
+  await page.getByRole("button", { name: "Restart preview" }).click();
+  await expect.poll(() => loadedAt(page)).not.toBe(started);
+  started = await loadedAt(page);
+  await page.getByRole("tab", { name: "Libraries" }).click();
+  const item = page.locator("#library-list li").first();
+  await item.getByLabel("Name").fill("domkit-renamed");
+  await item.getByLabel("Name").press("Tab");
+  await expect.poll(() => loadedAt(page)).not.toBe(started);
+});
+
+test("[blank] a component's own children survive patches to it", async ({ page }) => {
+  await page.getByRole("tab", { name: "Libraries" }).click();
+  await page.locator("#same-origin").check();
+  await page.getByRole("button", { name: "Add library by hand" }).click();
+  const item = page.locator("#library-list li").last();
+  await item.getByLabel("Modules (one URL per line)").fill("/test/fixtures/greeting-card.mjs");
+  await item.getByLabel("Modules (one URL per line)").press("Tab");
+  await expect(page.locator("#palette button", { hasText: "<greeting-card>" })).toBeVisible({ timeout: 10000 });
+  await page.locator("#palette button", { hasText: "<greeting-card>" }).click();
+  await expect.poll(() => game(page, () => document.querySelector("greeting-card")?.textContent)).toBe("Hello, world!");
+  const started = await loadedAt(page);
+  // greeting-card writes its own text; editing its attribute patches it, and the text it wrote is its own.
+  await row(page, "greeting-card").click();
+  await page.getByRole("tab", { name: "Element" }).click();
+  const name = page.locator("#inspector").getByLabel("name", { exact: true });
+  await name.fill("Ada");
+  await name.press("Enter");
+  await expect.poll(() => game(page, () => document.querySelector("greeting-card")?.textContent)).toBe("Hello, Ada!");
+  // Adding a sibling doesn't disturb it.
+  await page.evaluate(() => window.htmlbuilder.select(null));
+  await page.locator("#palette button", { hasText: /^<p>$/ }).click();
+  await expect.poll(() => game(page, () => document.body.querySelectorAll("p").length)).toBe(1);
+  expect(await game(page, () => document.querySelector("greeting-card")?.textContent)).toBe("Hello, Ada!");
+  expect(await loadedAt(page), "no reload").toBe(started);
 });

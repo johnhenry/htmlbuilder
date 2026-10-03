@@ -6,6 +6,7 @@ import { renderPalette } from "./palette.mjs";
 import { renderOutline } from "./outline.mjs";
 import { renderInspector, setTextAround } from "./inspector.mjs";
 import { connectPreview } from "./preview.mjs";
+import { describe as describePage, diff, reloadKey } from "./live.mjs";
 import { describeAll, libraryFromPackage } from "./manifests.mjs";
 import * as suggestions from "./suggestions.mjs";
 
@@ -26,13 +27,13 @@ const select = (element) => {
   refresh({ palette: false });
 };
 
-const preview = connectPreview(
-  $("preview"),
-  (path) => {
-    const element = project.nodeAt(path);
+const preview = connectPreview($("preview"), {
+  onSelect: (id) => {
+    const element = project.nodeById(id);
     if (element) select(element);
   },
-  (elements) => {
+  onReady: (token, tags) => previewReady(token, tags),
+  onDefined: (elements) => {
     const fresh = Object.keys(elements).filter((tag) => !defined.has(tag));
     for (const [tag, attributes] of Object.entries(elements)) defined.set(tag, attributes);
     // Only what this changes: the palette (elements no manifest describes)
@@ -42,7 +43,74 @@ const preview = connectPreview(
       if (fresh.includes(selected()?.localName)) refresh({ palette: false });
     }
   },
-);
+});
+
+// --- the live preview ----------------------------------------------------------
+// The preview loads the page once, then takes patches (live.mjs): only
+// what changed, so what's running keeps running. It reloads when a patch
+// can't do (libraries, components, base URL, or scripts changed), on
+// Restart, and when another project opens.
+
+let loadCount = 0;
+let loading = null; // the load in flight: what it was given
+let live = null; // what the running preview has
+
+const previewState = () => ({
+  description: describePage(project),
+  key: reloadKey(project),
+  css: project.css,
+  title: project.title,
+  selected: selected() ? project.idOf(selected()) : null,
+});
+
+function reloadPreview({ now = false } = {}) {
+  live = null;
+  loading = { token: ++loadCount, ...previewState() };
+  preview.load(project.serialize({ preview: true, selected: selected(), token: loading.token }), { now, sameOrigin: project.previewSameOrigin });
+}
+
+// The patch from `state` (what the preview has) to the project now, or null
+// if the preview should reload instead. Updates `state` to match.
+function patchFrom(state) {
+  const next = previewState();
+  const ops = diff(state.description, next.description);
+  if (ops === null) return null;
+  const patch = { ops };
+  if (next.css !== state.css) patch.css = next.css;
+  if (next.title !== state.title) patch.title = next.title;
+  if (next.selected !== state.selected) patch.selected = next.selected;
+  Object.assign(state, next);
+  return patch;
+}
+
+function previewReady(token, tags) {
+  if (!loading || token !== loading.token) return; // an older load
+  const state = loading;
+  loading = null;
+  // The page as loaded must be the page as written; if anything ran
+  // that changed it before we got here, keep reloading instead.
+  if (JSON.stringify(tags) !== JSON.stringify(state.description.tags)) return;
+  const ids = state.description.order;
+  if (state.key !== reloadKey(project)) return reloadPreview();
+  const patch = patchFrom(state);
+  if (patch === null) return reloadPreview();
+  preview.post({ htmlbuilder: "bind", token, ids, patch });
+  live = state;
+  live.token = token;
+}
+
+function updatePreview({ now = false } = {}) {
+  const key = reloadKey(project);
+  if (live && live.key === key) {
+    const patch = patchFrom(live);
+    if (patch === null) return reloadPreview({ now });
+    if (patch.ops.length || Object.keys(patch).length > 1) preview.post({ htmlbuilder: "patch", token: live.token, patch });
+    return;
+  }
+  // A load in flight catches up when it's ready.
+  if (loading && loading.key === key) return;
+  reloadPreview({ now });
+}
 
 // What's known about a tag: its manifest entry, or else (for libraries
 // without one) the attributes its class observes, from the preview.
@@ -98,7 +166,7 @@ async function refresh({ palette = true, now = false } = {}) {
   URL.revokeObjectURL(download.href);
   download.href = URL.createObjectURL(new Blob([html], { type: "text/html" }));
   download.download = `${(project.title || "page").replace(/[^\w.-]+/g, "-").toLowerCase()}.html`;
-  preview.show(project.serialize({ preview: true, selected: element }), { now, sameOrigin: project.previewSameOrigin });
+  updatePreview({ now });
   if (loaded) {
     try {
       localStorage.setItem(STORAGE_KEY, html);
@@ -324,6 +392,7 @@ function renderMatchingRules(element) {
 async function open(html, { from = "" } = {}) {
   loaded = false;
   defined.clear();
+  live = loading = null; // a new page: load it afresh
   project = Project.parse(html);
   // A page with relative URLs opened from elsewhere keeps pointing there.
   if (from && !project.base && project.usesRelativeURLs()) project.base = new URL(from, location.href).href;
@@ -367,6 +436,7 @@ addEventListener("keydown", (event) => {
   else return;
   event.preventDefault();
 });
+$("restart-preview").onclick = () => reloadPreview({ now: true });
 $("undo").onclick = () => run("undo");
 $("redo").onclick = () => run("redo");
 // --- New page ------------------------------------------------------------------
