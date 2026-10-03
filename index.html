@@ -76,6 +76,34 @@
       </aside>
     </main>
 
+    <!-- New page: what to start from, and which libraries. -->
+    <dialog id="new-dialog" aria-labelledby="new-heading">
+      <form method="dialog" id="new-form">
+        <h2 id="new-heading">New page</h2>
+        <label>Title <input name="title" placeholder="Untitled (or the page's own title)" /></label>
+        <fieldset>
+          <legend>Start from</legend>
+          <label class="check"><input type="radio" name="start" value="empty" checked /> An empty page</label>
+          <label class="check"><input type="radio" name="start" value="keep" /> This page's libraries, snippets, and CSS, with nothing on it</label>
+          <label class="check"><input type="radio" name="start" value="url" /> A page at a URL</label>
+          <input name="url" placeholder="https://…/page.html" aria-label="Page URL" spellcheck="false" />
+        </fieldset>
+        <fieldset>
+          <legend>Libraries</legend>
+          <div id="new-packages"></div>
+          <label>Other packages (a URL or npm name per line)
+            <textarea name="packages" rows="2" spellcheck="false" placeholder="https://cdn.jsdelivr.net/gh/user/repo@commit/"></textarea>
+          </label>
+        </fieldset>
+        <p class="hint">This page is replaced. Download it first to keep it.</p>
+        <p id="new-status" class="hint" role="status"></p>
+        <div class="actions">
+          <button type="submit" value="cancel" formnovalidate>Cancel</button>
+          <button type="submit" value="create" id="new-create">Create</button>
+        </div>
+      </form>
+    </dialog>
+
     <!-- Shortcuts (they don't fire while typing in a field). -->
     <hot-key hotkey="delete backspace" commandfor="editor" command="--delete"></hot-key>
     <hot-key hotkey="mod+d" commandfor="editor" command="--duplicate"></hot-key>

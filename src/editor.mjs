@@ -7,6 +7,7 @@ import { renderOutline } from "./outline.mjs";
 import { renderInspector, setTextAround } from "./inspector.mjs";
 import { connectPreview } from "./preview.mjs";
 import { describeAll, libraryFromPackage } from "./manifests.mjs";
+import * as suggestions from "./suggestions.mjs";
 
 const STORAGE_KEY = "htmlbuilder:project";
 const $ = (id) => document.getElementById(id);
@@ -368,8 +369,102 @@ addEventListener("keydown", (event) => {
 });
 $("undo").onclick = () => run("undo");
 $("redo").onclick = () => run("redo");
-$("new").onclick = async () => {
-  if (confirm("Start a new, empty page? (Download this one first to keep it.)")) await openURL("./projects/blank.html");
+// --- New page ------------------------------------------------------------------
+
+// Libraries offered in the New dialog: the suggestions (suggestions.mjs),
+// and packages added before in this browser.
+const SUGGESTED = suggestions.LIBRARIES;
+const RECENT_KEY = "htmlbuilder:packages";
+const recentPackages = () => {
+  try {
+    return JSON.parse(localStorage.getItem(RECENT_KEY) ?? "[]").filter((p) => p?.spec);
+  } catch {
+    return [];
+  }
+};
+const rememberPackage = (name, spec) => {
+  try {
+    const list = [{ name, spec }, ...recentPackages().filter((p) => p.spec !== spec)].slice(0, 8);
+    localStorage.setItem(RECENT_KEY, JSON.stringify(list));
+  } catch {
+    // storage blocked: nothing remembered
+  }
+};
+
+$("new").onclick = () => {
+  const form = $("new-form");
+  form.reset();
+  $("new-status").textContent = "";
+  const offered = [...SUGGESTED, ...recentPackages().filter((p) => !SUGGESTED.some((s) => s.spec === p.spec))];
+  $("new-packages").replaceChildren(
+    ...offered.map(({ name, spec }) => {
+      const label = Object.assign(document.createElement("label"), { className: "check" });
+      const box = Object.assign(document.createElement("input"), { type: "checkbox", name: "package", value: spec });
+      label.append(box, name, Object.assign(document.createElement("small"), { textContent: spec }));
+      return label;
+    }),
+  );
+  // Suggested pages, as starting points beside the others.
+  const url = $("new-form").elements.url.closest("fieldset").querySelector('[value="url"]').closest("label");
+  $("new-form").querySelectorAll("[data-suggested]").forEach((el) => el.remove());
+  url.before(
+    ...suggestions.PAGES.map(({ name, url: href }) => {
+      const label = Object.assign(document.createElement("label"), { className: "check" });
+      label.dataset.suggested = "";
+      label.append(Object.assign(document.createElement("input"), { type: "radio", name: "start", value: `page:${href}` }), name);
+      return label;
+    }),
+  );
+  $("new-dialog").showModal();
+};
+// Typing a URL picks "A page at a URL".
+$("new-form").elements.url.oninput = () => ($("new-form").elements.start.value = "url");
+$("new-form").onsubmit = async (event) => {
+  if (event.submitter?.value !== "create") return; // Cancel closes it
+  event.preventDefault();
+  const form = $("new-form").elements;
+  const status = $("new-status");
+  const specs = [
+    ...[...$("new-packages").querySelectorAll("input:checked")].map((box) => box.value),
+    ...form.packages.value.split("\n").map((s) => s.trim()).filter(Boolean),
+  ];
+  $("new-create").disabled = true;
+  try {
+    status.textContent = "Reading packages…";
+    const libraries = [];
+    for (const spec of specs) {
+      const library = await libraryFromPackage(spec).catch((error) => Promise.reject(new Error(`${spec}: ${error.message}`)));
+      libraries.push(library);
+      rememberPackage(library.name, spec);
+    }
+    // The starting point, as a page.
+    let html;
+    let from = "";
+    const page = form.start.value.startsWith("page:") ? form.start.value.slice(5) : form.start.value === "url" ? form.url.value.trim() : "";
+    if (form.start.value === "url" && !page) throw new Error("Enter the page's URL.");
+    if (page) {
+      from = new URL(page, location.href).href;
+      status.textContent = "Opening the page…";
+      const response = await fetch(from);
+      if (!response.ok) throw new Error(`${response.status} ${from}`);
+      html = await response.text();
+    } else if (form.start.value === "keep") {
+      html = project.serialize();
+    } else {
+      html = await fetch("./projects/blank.html").then((r) => r.text());
+    }
+    const start = Project.parse(html);
+    if (form.start.value === "keep") start.body.replaceChildren();
+    if (from && !start.base && start.usesRelativeURLs()) start.base = from;
+    start.title = form.title.value.trim() || (page ? start.title : "Untitled");
+    for (const library of libraries) start.libraries = [...start.libraries.filter((l) => l.name !== library.name), library];
+    $("new-dialog").close();
+    await open(start.serialize());
+  } catch (error) {
+    status.textContent = error.message;
+  } finally {
+    $("new-create").disabled = false;
+  }
 };
 $("open").onclick = () => $("open-file").click();
 $("open-file").onchange = async () => {
@@ -420,6 +515,7 @@ $("add-package").onsubmit = async (event) => {
     project.change(() => {
       project.libraries = [...project.libraries.filter((l) => l.name !== library.name), library];
     });
+    rememberPackage(library.name, input.value.trim());
     status.textContent = `Added ${library.name}.`;
     input.value = "";
     await refresh();
