@@ -18,9 +18,9 @@ const previewFrame = (page) => page.frame({ url: /about:srcdoc/ }) ?? page.frame
 
 // forsnaken's own page for builders (johnhenry/forsnaken), pinned: an
 // outside project, opened the way anyone's would be.
-const FORSNAKEN = "https://cdn.jsdelivr.net/gh/johnhenry/forsnaken@1728f2ae1322588eb37a0ac27951096ab8fd4b14/builder.html";
-const DOMKIT_PACKAGE = "https://cdn.jsdelivr.net/gh/johnhenry/domkit@8356a92f6b1c15205fcc1ca6d6d80ceffddd6386/";
-const FORSNAKEN_PACKAGE = "https://cdn.jsdelivr.net/gh/johnhenry/forsnaken@1728f2ae1322588eb37a0ac27951096ab8fd4b14/";
+const FORSNAKEN = "https://cdn.jsdelivr.net/gh/johnhenry/forsnaken@8f1292c890df58613acb2a6ecd7795a9d5d9fe71/builder.html";
+const DOMKIT_PACKAGE = "https://cdn.jsdelivr.net/gh/johnhenry/domkit@e7cfc1ce246fcdb88f194f87ae03bb3e28d2f11e/";
+const FORSNAKEN_PACKAGE = "https://cdn.jsdelivr.net/gh/johnhenry/forsnaken@8f1292c890df58613acb2a6ecd7795a9d5d9fe71/";
 
 // Most tests start from forsnaken's libraries and snippets, with an empty page.
 test.beforeEach(async ({ page }, testInfo) => {
@@ -372,7 +372,7 @@ test("[blank] New offers forsnaken's page and library as starting points", async
 
 // --- the live preview: edits are patched into the running page ---------------
 
-const LIVE_FORSNAKEN = "https://cdn.jsdelivr.net/gh/johnhenry/forsnaken@94b121adfdde56a5c054db06b79f1376eafce3a6/builder.html";
+const LIVE_FORSNAKEN = "https://cdn.jsdelivr.net/gh/johnhenry/forsnaken@8f1292c890df58613acb2a6ecd7795a9d5d9fe71/builder.html";
 const openLive = async (page) => {
   await page.goto(`/?project=${encodeURIComponent(LIVE_FORSNAKEN)}`);
   await page.evaluate(() => window.htmlbuilder.ready);
