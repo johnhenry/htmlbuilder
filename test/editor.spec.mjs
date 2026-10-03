@@ -18,9 +18,9 @@ const previewFrame = (page) => page.frame({ url: /about:srcdoc/ }) ?? page.frame
 
 // forsnaken's own page for builders (johnhenry/forsnaken), pinned: an
 // outside project, opened the way anyone's would be.
-const FORSNAKEN = "https://cdn.jsdelivr.net/gh/johnhenry/forsnaken@6b410c09cfe6c094e1bb33e530256122928e7de1/builder.html";
-const DOMKIT_PACKAGE = "https://cdn.jsdelivr.net/gh/johnhenry/domkit@e7cfc1ce246fcdb88f194f87ae03bb3e28d2f11e/";
-const FORSNAKEN_PACKAGE = "https://cdn.jsdelivr.net/gh/johnhenry/forsnaken@6b410c09cfe6c094e1bb33e530256122928e7de1/";
+const FORSNAKEN = "https://cdn.jsdelivr.net/gh/johnhenry/forsnaken@c62e1a05274f7d0a1bc090fd219b691f3f64bdea/builder.html";
+const DOMKIT_PACKAGE = "https://cdn.jsdelivr.net/gh/johnhenry/domkit@6b06f9ae97fde22c367107f0c3c8967ed79c889e/";
+const FORSNAKEN_PACKAGE = "https://cdn.jsdelivr.net/gh/johnhenry/forsnaken@c62e1a05274f7d0a1bc090fd219b691f3f64bdea/";
 
 // Most tests start from forsnaken's libraries and snippets, with an empty page.
 test.beforeEach(async ({ page }, testInfo) => {
@@ -44,11 +44,11 @@ test("builds the snake game by drag and drop, and it runs in the preview", async
   for (const name of ["Snake (green)", "Wall (diagonal)", "Apples", "Clock"]) {
     await append(page, snippet(page, name), "forsnaken-game");
   }
-  await dropOn(page, snippet(page, "Arrow keys for green"), endRow(page, "pixel-canvas"), "after");
 
   const html = await markup(page);
   // Explicit closing tags, nested as dropped, in the order dropped.
-  expect(html).toMatch(/<pixel-canvas[^>]*>\s*<forsnaken-game[^>]*>\s*<forsnaken-snake[^>]*>\s*<snake-brain-player[^>]*><\/snake-brain-player>\s*<\/forsnaken-snake>\s*<forsnaken-wall[^>]*><\/forsnaken-wall>\s*<forsnaken-apple[^>]*><\/forsnaken-apple>\s*<frame-timer[^>]*><\/frame-timer>\s*<\/forsnaken-game>\s*<\/pixel-canvas>\s*<hot-key/);
+  expect(html).toMatch(/<pixel-canvas[^>]*>\s*<forsnaken-game[^>]*>\s*<forsnaken-snake[^>]*>\s*<snake-brain-player[^>]*>\s*(<hot-key[^>]*><\/hot-key>\s*){4}<gamepad-input[^>]*><\/gamepad-input>\s*<\/snake-brain-player>\s*<\/forsnaken-snake>\s*<forsnaken-wall[^>]*><\/forsnaken-wall>\s*<forsnaken-apple[^>]*><\/forsnaken-apple>\s*<frame-timer[^>]*><\/frame-timer>\s*<\/forsnaken-game>\s*<\/pixel-canvas>/);
+  // The snake's controls came inside its player brain: no ids to wire up.
 
   // The preview runs it: the board is drawn through <pixel-canvas>, and the clock moves the snake.
   await expect.poll(async () => {
@@ -374,7 +374,7 @@ test("[blank] New offers forsnaken's page and library as starting points", async
 
 // --- the live preview: edits are patched into the running page ---------------
 
-const LIVE_FORSNAKEN = "https://cdn.jsdelivr.net/gh/johnhenry/forsnaken@6b410c09cfe6c094e1bb33e530256122928e7de1/builder.html";
+const LIVE_FORSNAKEN = "https://cdn.jsdelivr.net/gh/johnhenry/forsnaken@c62e1a05274f7d0a1bc090fd219b691f3f64bdea/builder.html";
 const openLive = async (page) => {
   await page.goto(`/?project=${encodeURIComponent(LIVE_FORSNAKEN)}`);
   await page.evaluate(() => window.htmlbuilder.ready);
