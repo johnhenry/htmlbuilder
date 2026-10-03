@@ -59,15 +59,18 @@ test("builds the snake game by drag and drop, and it runs in the preview", async
       return screen?.canvas?.width && game?.snakes?.[0]?.snake.head.x;
     }).catch(() => 0);
   }, { timeout: 15000 }).toBeGreaterThan(2);
-  const drawn = await previewFrame(page).evaluate(() => {
-    const canvas = document.querySelector("pixel-canvas").canvas;
-    const data = canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height).data;
-    let colored = 0;
-    for (let i = 0; i < data.length; i += 4) if (data[i] > 150 && data[i + 1] < 50) colored++; // red apple pixels
-    return { size: [canvas.width, canvas.height], colored };
-  });
-  expect(drawn.size).toEqual([800, 400]);
-  expect(drawn.colored).toBeGreaterThan(1000);
+  // Drawn through <pixel-canvas>: 800×400, with the red apples on it (wait
+  // for a frame that has them: pixel-canvas draws on its own schedule).
+  const drawn = () =>
+    previewFrame(page).evaluate(() => {
+      const canvas = document.querySelector("pixel-canvas").canvas;
+      const data = canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height).data;
+      let colored = 0;
+      for (let i = 0; i < data.length; i += 4) if (data[i] > 150 && data[i + 1] < 50) colored++; // red apple pixels
+      return { size: [canvas.width, canvas.height], colored };
+    });
+  expect((await drawn()).size).toEqual([800, 400]);
+  await expect.poll(async () => (await drawn()).colored, { timeout: 10000 }).toBeGreaterThan(1000);
   await page.screenshot({ path: "test-results/snake-built-in-editor.png" });
 });
 
