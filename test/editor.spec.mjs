@@ -18,9 +18,9 @@ const previewFrame = (page) => page.frame({ url: /about:srcdoc/ }) ?? page.frame
 
 // forsnaken's own page for builders (johnhenry/forsnaken), pinned: an
 // outside project, opened the way anyone's would be.
-const FORSNAKEN = "https://cdn.jsdelivr.net/gh/johnhenry/forsnaken@96578a5ea5be48d0f5dabf9ed5f9a10e85809ee5/builder.html";
-const DOMKIT_PACKAGE = "https://cdn.jsdelivr.net/gh/johnhenry/domkit@6b06f9ae97fde22c367107f0c3c8967ed79c889e/";
-const FORSNAKEN_PACKAGE = "https://cdn.jsdelivr.net/gh/johnhenry/forsnaken@96578a5ea5be48d0f5dabf9ed5f9a10e85809ee5/";
+const FORSNAKEN = "https://cdn.jsdelivr.net/gh/johnhenry/forsnaken@7300b17a5c486b59b27800b67d48b0243fbd6289/builder.html";
+const DOMKIT_PACKAGE = "https://cdn.jsdelivr.net/gh/johnhenry/domkit@86b39db7a6d2807efed30a77cb295e72e6289c94/";
+const FORSNAKEN_PACKAGE = "https://cdn.jsdelivr.net/gh/johnhenry/forsnaken@7300b17a5c486b59b27800b67d48b0243fbd6289/";
 
 // Most tests start from forsnaken's libraries and snippets, with an empty page.
 test.beforeEach(async ({ page }, testInfo) => {
@@ -374,7 +374,7 @@ test("[blank] New offers forsnaken's page and library as starting points", async
 
 // --- the live preview: edits are patched into the running page ---------------
 
-const LIVE_FORSNAKEN = "https://cdn.jsdelivr.net/gh/johnhenry/forsnaken@96578a5ea5be48d0f5dabf9ed5f9a10e85809ee5/builder.html";
+const LIVE_FORSNAKEN = "https://cdn.jsdelivr.net/gh/johnhenry/forsnaken@7300b17a5c486b59b27800b67d48b0243fbd6289/builder.html";
 const openLive = async (page) => {
   await page.goto(`/?project=${encodeURIComponent(LIVE_FORSNAKEN)}`);
   await page.evaluate(() => window.htmlbuilder.ready);
@@ -471,7 +471,7 @@ test("[blank] a component's own children survive patches to it", async ({ page }
 });
 
 test("[blank] pixelable as a library: its effects in the palette, and using pixel-canvas loads just that module", async ({ page }) => {
-  const PIXELABLE = "https://cdn.jsdelivr.net/gh/johnhenry/pixelable@869ee5f4af8f7bbfeb24ea481f2843835800f849/";
+  const PIXELABLE = "https://cdn.jsdelivr.net/gh/johnhenry/pixelable@73c544ab05ccedc3089dfee81a105f8539d5f944/";
   await page.getByRole("tab", { name: "Libraries" }).click();
   await page.getByLabel("Add a library from a package").fill(PIXELABLE);
   await page.getByRole("button", { name: "Add", exact: true }).click();
