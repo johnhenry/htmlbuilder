@@ -18,9 +18,9 @@ const previewFrame = (page) => page.frame({ url: /about:srcdoc/ }) ?? page.frame
 
 // forsnaken's own page for builders (johnhenry/forsnaken), pinned: an
 // outside project, opened the way anyone's would be.
-const FORSNAKEN = "https://cdn.jsdelivr.net/gh/johnhenry/forsnaken@d067e559bec937ae2248fd084e3387df85276d0c/builder.html";
+const FORSNAKEN = "https://cdn.jsdelivr.net/gh/johnhenry/forsnaken@c2bf2f156c3a31f90931c432fab8f613967f7c56/builder.html";
 const DOMKIT_PACKAGE = "https://cdn.jsdelivr.net/gh/johnhenry/domkit@86b39db7a6d2807efed30a77cb295e72e6289c94/";
-const FORSNAKEN_PACKAGE = "https://cdn.jsdelivr.net/gh/johnhenry/forsnaken@d067e559bec937ae2248fd084e3387df85276d0c/";
+const FORSNAKEN_PACKAGE = "https://cdn.jsdelivr.net/gh/johnhenry/forsnaken@c2bf2f156c3a31f90931c432fab8f613967f7c56/";
 
 // Most tests start from forsnaken's libraries and snippets, with an empty page.
 test.beforeEach(async ({ page }, testInfo) => {
@@ -374,7 +374,7 @@ test("[blank] New offers forsnaken's page and library as starting points", async
 
 // --- the live preview: edits are patched into the running page ---------------
 
-const LIVE_FORSNAKEN = "https://cdn.jsdelivr.net/gh/johnhenry/forsnaken@d067e559bec937ae2248fd084e3387df85276d0c/builder.html";
+const LIVE_FORSNAKEN = "https://cdn.jsdelivr.net/gh/johnhenry/forsnaken@c2bf2f156c3a31f90931c432fab8f613967f7c56/builder.html";
 const openLive = async (page) => {
   await page.goto(`/?project=${encodeURIComponent(LIVE_FORSNAKEN)}`);
   await page.evaluate(() => window.htmlbuilder.ready);
@@ -471,7 +471,7 @@ test("[blank] a component's own children survive patches to it", async ({ page }
 });
 
 test("[blank] canvas-fx as a library: its effects in the palette, and using pixel-canvas loads just that module", async ({ page }) => {
-  const CANVAS_FX = "https://cdn.jsdelivr.net/gh/johnhenry/canvas-fx@6813d7555865f4bf2da2d3928f544f4e33463baf/";
+  const CANVAS_FX = "https://cdn.jsdelivr.net/gh/johnhenry/canvas-fx@af0b50414a9bdbfe9daaa26752d9792a3ee9712e/";
   await page.getByRole("tab", { name: "Libraries" }).click();
   await page.getByLabel("Add a library from a package").fill(CANVAS_FX);
   await page.getByRole("button", { name: "Add", exact: true }).click();
