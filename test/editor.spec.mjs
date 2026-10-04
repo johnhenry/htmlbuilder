@@ -18,9 +18,9 @@ const previewFrame = (page) => page.frame({ url: /about:srcdoc/ }) ?? page.frame
 
 // forsnaken's own page for builders (johnhenry/forsnaken), pinned: an
 // outside project, opened the way anyone's would be.
-const FORSNAKEN = "https://cdn.jsdelivr.net/gh/johnhenry/forsnaken@7300b17a5c486b59b27800b67d48b0243fbd6289/builder.html";
+const FORSNAKEN = "https://cdn.jsdelivr.net/gh/johnhenry/forsnaken@c2bf2f156c3a31f90931c432fab8f613967f7c56/builder.html";
 const DOMKIT_PACKAGE = "https://cdn.jsdelivr.net/gh/johnhenry/domkit@86b39db7a6d2807efed30a77cb295e72e6289c94/";
-const FORSNAKEN_PACKAGE = "https://cdn.jsdelivr.net/gh/johnhenry/forsnaken@7300b17a5c486b59b27800b67d48b0243fbd6289/";
+const FORSNAKEN_PACKAGE = "https://cdn.jsdelivr.net/gh/johnhenry/forsnaken@c2bf2f156c3a31f90931c432fab8f613967f7c56/";
 
 // Most tests start from forsnaken's libraries and snippets, with an empty page.
 test.beforeEach(async ({ page }, testInfo) => {
@@ -374,7 +374,7 @@ test("[blank] New offers forsnaken's page and library as starting points", async
 
 // --- the live preview: edits are patched into the running page ---------------
 
-const LIVE_FORSNAKEN = "https://cdn.jsdelivr.net/gh/johnhenry/forsnaken@7300b17a5c486b59b27800b67d48b0243fbd6289/builder.html";
+const LIVE_FORSNAKEN = "https://cdn.jsdelivr.net/gh/johnhenry/forsnaken@c2bf2f156c3a31f90931c432fab8f613967f7c56/builder.html";
 const openLive = async (page) => {
   await page.goto(`/?project=${encodeURIComponent(LIVE_FORSNAKEN)}`);
   await page.evaluate(() => window.htmlbuilder.ready);
@@ -470,12 +470,12 @@ test("[blank] a component's own children survive patches to it", async ({ page }
   expect(await loadedAt(page), "no reload").toBe(started);
 });
 
-test("[blank] pixelable as a library: its effects in the palette, and using pixel-canvas loads just that module", async ({ page }) => {
-  const PIXELABLE = "https://cdn.jsdelivr.net/gh/johnhenry/pixelable@73c544ab05ccedc3089dfee81a105f8539d5f944/";
+test("[blank] canvas-fx as a library: its effects in the palette, and using pixel-canvas loads just that module", async ({ page }) => {
+  const CANVAS_FX = "https://cdn.jsdelivr.net/gh/johnhenry/canvas-fx@af0b50414a9bdbfe9daaa26752d9792a3ee9712e/";
   await page.getByRole("tab", { name: "Libraries" }).click();
-  await page.getByLabel("Add a library from a package").fill(PIXELABLE);
+  await page.getByLabel("Add a library from a package").fill(CANVAS_FX);
   await page.getByRole("button", { name: "Add", exact: true }).click();
-  await expect(page.locator("#package-status")).toHaveText("Added pixelable.");
+  await expect(page.locator("#package-status")).toHaveText("Added canvas-fx.");
   for (const tag of ["pixel-canvas", "pixel-mosaic", "pixel-sprite"]) {
     await expect(page.locator("#palette button", { hasText: new RegExp(`^<${tag}>$`) })).toBeVisible();
   }
@@ -485,6 +485,6 @@ test("[blank] pixelable as a library: its effects in the palette, and using pixe
   // Typed from the manifest: effects is text, html a checkbox.
   await expect(page.locator("#inspector").getByLabel("html", { exact: true })).toHaveAttribute("type", "checkbox");
   const html = await markup(page);
-  expect(html).toContain(`<script type="module" src="${PIXELABLE}src/pixel-canvas/global.mjs" data-library="pixelable">`);
+  expect(html).toContain(`<script type="module" src="${CANVAS_FX}src/pixel-canvas/global.mjs" data-library="canvas-fx">`);
   expect(html.match(/<script type="module"/g)).toHaveLength(1);
 });

@@ -17,7 +17,7 @@ and forsnaken nothing about htmlbuilder)
   page's libraries, snippets, and CSS with nothing on it, or a page at a
   URL); and which libraries to add (domkit, packages you've added before in
   this browser, or any package URL or npm name). The suggested libraries
-  and pages (domkit, pixelable, and forsnaken's game) are plain links in
+  and pages (domkit, canvas-fx, and forsnaken's game) are plain links in
   [`src/suggestions.mjs`](src/suggestions.mjs); edit that list freely.
 - **Palette** (left): snippets saved in the project, every custom element
   its libraries describe, elements the page defines that no manifest
